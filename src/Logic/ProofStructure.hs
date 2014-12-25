@@ -1,0 +1,93 @@
+module Logic.ProofStructure where
+import qualified Logic.Link as Link
+
+hellof = "hello"
+
+getAllPremises :: [Link.Link f] -> [f]
+getAllPremises [] =  []
+getAllPremises (link:links) =  Link.premises link ++ getAllPremises links
+
+--getAllConclusions :: [Link f] -> [f]
+--getAllConclusions [] =  []
+--getAllConclusions (link:links) =  conclusions link ++ getAllConclusions links
+--
+--isConclusionOf :: (Eq f) => f -> [Link f] -> Bool
+--isConclusionOf formula [] = False
+--isConclusionOf formula (l:links) =
+--  if formula `elem` (conclusions l)
+--  then True
+--  else isConclusionOf formula links
+--
+--isPremiseOf :: (Eq f) => f -> [Link f] -> Bool
+--isPremiseOf formula [] = False
+--isPremiseOf formula (l:links) =
+--    if formula `elem` (premises l)
+--    then True
+--    else isPremiseOf formula links
+--
+---- Moortgat & Moot 2012:
+----   *Definition 2.2.* A proof structure <S, L> is a finite set of formula occurrences S
+----   and a set of links L [...] such that
+----   • each formula is at most once the premise of a link,
+----   • each formula is at most once the conclusion of a link
+--
+---- Inductive constructor for a proof structure:
+---- TODO experiment if this works better than the set approach
+--data ProofStructureInd f = Empty | Structure (Link f) (ProofStructureInd f) deriving (Show)
+--
+---- Constructor for a proof structure using lists:
+--data ProofStructure f = ProofStructure {formulas :: [f], links :: [Link f]} deriving (Show, Eq)
+---- TODO formulas and links should be sets
+--constructProofStructure :: (Eq f) => [f] -> [Link f] -> ProofStructure f
+--constructProofStructure formulas links =
+--   if formulas `occursAtMostOnce` (getAllPremises links) && formulas `occursAtMostOnce` (getAllConclusions links)
+--   then ProofStructure formulas links
+--   else error "Each formula should be at most once the premise of a link and at most once the conclusion of a link"
+--   where
+--     countIs1OrLess :: (Eq f) => f -> [f] -> Int->Bool
+--     countIs1OrLess _ [] _ = True
+--     countIs1OrLess f1 (f2:formulas) count =
+--       if f1 == f2
+--       then if count >=1
+--            then False
+--            else countIs1OrLess f1 formulas (count+1)
+--       else countIs1OrLess f1 formulas count
+--
+--     occursAtMostOnce :: (Eq f) => [f] -> [f] -> Bool
+--     occursAtMostOnce [] links = True
+--     occursAtMostOnce (f:formulas) linkFormulas =
+--       if countIs1OrLess f linkFormulas 0
+--       then occursAtMostOnce formulas linkFormulas
+--       else False
+--
+---- M&M 2012, p7: "Formulas which are not the conclusion of any link are called the hypotheses
+---- of the proof structure."
+--hypotheses :: (Eq f)=> ProofStructure f -> [f]
+--hypotheses s = getProofHypotheses (formulas s)
+--  where
+--   getProofHypotheses = foldl (addIfNotConclusion (links s)) []
+--   addIfNotConclusion :: (Eq f) => [Link f] -> [f] -> f -> [f]
+--   addIfNotConclusion links acc formula =
+--     if not (formula `isConclusionOf` links)
+--     then (formula:acc)
+--     else acc
+--
+--
+---- M&M 2012, p7: "Formulas which are not the premise of any link are called
+---- the conclusions of the proof structure."
+--conclusions :: (Eq f)=> ProofStructure f -> [f]
+--conclusions s = getProofHypotheses (formulas s)
+--  where
+--   getProofConclusions = foldl (addIfNotPremise (links s)) []
+--   addIfNotPremise :: (Eq f) => [Link f] -> [f] -> f -> [f]
+--   addIfNotPremise links acc formula =
+--     if not (formula `isPremiseOf` links)
+--     then (formula:acc)
+--     else acc
+--
+----Proof structure tests:
+--l1 = constructLink Tensor [1,2] [3] 3
+--l2 = constructLink CoTensor [3] [1,2] 3
+--formulaSet = [1,2,3,4,5]
+--testStructurePass = constructProofStructure formulaSet [l1,l2]
+--testStructureFail = constructProofStructure formulaSet [l1,l1]
