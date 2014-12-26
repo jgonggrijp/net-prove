@@ -9,7 +9,11 @@ numberOfTentacles,
 linkType,
 premises ,
 conclusions,
-mainFormula
+mainFormula,
+getAllPremises,
+getAllConclusions,
+isConclusionOfAnyLink,
+isPremiseOfAnyLink
 ) where
 
 -- Links: Tensor or cotensor links that connect a number of formulae.
@@ -54,7 +58,26 @@ isRightLink (Link _ _ conclusions mainFormula) = mainFormula `elem` conclusions
 numberOfTentacles :: Link f -> Int
 numberOfTentacles (Link _ premises conclusions _) = length premises + length conclusions
 
--- Tests:
-linkPass = constructLink Tensor [1,2,3] [4,5,6] 9
-linkFail = constructLink Tensor [1,2,3] [4,5,6] 2
-linkManual = Link {linkType = Tensor, premises = [1,2,3], conclusions = [4,5,6], mainFormula = 2}
+--Some utility functions:
+getAllPremises :: [Link f] -> [f]
+getAllPremises [] =  []
+getAllPremises (link:links) =  premises link ++ getAllPremises links
+
+getAllConclusions :: [Link f] -> [f]
+getAllConclusions [] =  []
+getAllConclusions (link:links) =  conclusions link ++ getAllConclusions links
+
+isConclusionOfAnyLink :: (Eq f) => f -> [Link f] -> Bool
+isConclusionOfAnyLink formula [] = False
+isConclusionOfAnyLink formula (l:links) =
+  if formula `elem` (conclusions l)
+  then True
+  else isConclusionOfAnyLink formula links
+
+isPremiseOfAnyLink :: (Eq f) => f -> [Link f] -> Bool
+isPremiseOfAnyLink formula [] = False
+isPremiseOfAnyLink formula (l:links) =
+    if formula `elem` (premises l)
+    then True
+    else isPremiseOfAnyLink formula links
+
