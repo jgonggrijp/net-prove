@@ -1,70 +1,45 @@
 module Logic.LG where
 
 data LinkType = Tensor | Cotensor
+data LinkMode = Fusion | Fission
+data LinkDirection = Left | Right | Third
 
-class Link a where
-    linkType :: a -> LinkType
-    premises :: a -> [Node]
-    conclusions :: a -> [Node]
-    mainFormula :: a -> Node
-    mainFormula = main
-
-data FusionTensor = FusionTensor {
+data Link = Link {
+    linkType :: LinkType,
+    linkMode :: LinkMode,
+    linkDirection :: LinkDirection,
     left :: Node,
     right :: Node,
-    bottom :: Node,
-    main :: Node }
-instance Link FusionTensor where
-    linkType fut = Tensor
-    premises fut = [left fut, right fut]
-    conclusions fut = [bottom fut]
+    third :: Node }
 
-data FusionCotensor = FusionCotensor {
-    left :: Node,
-    right :: Node,
-    top :: Node,
-    main :: Node }
-instance Link FusionCotensor where
-    linkType fuc = Cotensor
-    conclusions fuc = [left fuc, right fuc]
-    premises fuc = [top fuc]
+premises :: Link -> [Node]
+premises (Link Tensor Fusion    _ a b _) = [a, b]
+premises (Link Cotensor Fusion  _ _ _ c) = [c]
+premises (Link Tensor Fission   _ _ _ c) = [c]
+premises (Link Cotensor Fission _ a b _) = [a, b]
 
-data FissionTensor = FissionTensor {
-    left :: Node,
-    right :: Node,
-    top :: Node,
-    main :: Node }
-instance Link FissionTensor where
-    linkType fit = Tensor
-    conclusions fit = [left fit, right fit]
-    premises fit = [top fit]
+succedents :: Link -> [Node]
+succedents (Link Tensor Fusion    _ _ _ c) = [c]
+succedents (Link Cotensor Fusion  _ a b _) = [a, b]
+succedents (Link Tensor Fission   _ a b _) = [a, b]
+succedents (Link Cotensor Fission _ _ _ c) = [c]
 
-data FissionCotensor = FissionCotensor {
-    left :: Node,
-    right :: Node,
-    bottom :: Node,
-    main :: Node }
-instance Link FissionCotensor where
-    linkType fic = Cotensor
-    premises fic = [left fic, right fic]
-    conclusions fic = [bottom fic]
+mainNode :: Link -> Node
+mainNode (Link _ _ Left  a _ _) = a
+mainNode (Link _ _ Right _ b _) = b
+mainNode (Link _ _ Third _ _ c) = c
 
-data Node formType linkUp linkDown = Node {
-    formula :: (Formula formType) => formType,
-    conclusionLink :: (Link linkUp) => Maybe linkUp,
-    premiseLink :: (Link linkDown) => Maybe linkDown }
-
-class Formula a where
-    -- common functions on formulas
-    -- (obviously, this should actually be in the Framework module)
-
--- types below are going to be instances of formula, somehow
+data Node = Node {
+    formula :: Formula,
+    premiseLink :: Maybe Link,
+    succedentLink :: Maybe Link }
 
 data Atom = NP | N | S
 
-data Prod a b = a :*: b
-data LDiv a b = a :\\ b
-data RDiv a b = a :// b
-data Sum  a b = a :+: b
-data LSub a b = a :-\ b
-data RSub a b = a :-/ b
+data Formula = Atomic Atom
+    | Formula :*: Formula
+    | Formula :\\ Formula
+    | Formula :// Formula
+    | Formula :+: Formula
+    | Formula :-\ Formula
+    | Formula :-/ Formula
