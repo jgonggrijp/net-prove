@@ -1,8 +1,10 @@
 module Logic.LG where
 
-data LinkType = Tensor | Cotensor
-data LinkMode = Fusion | Fission
-data LinkDirection = Left | Right | Third
+import Data.Set (Set)
+
+data LinkType = Tensor | Cotensor deriving (Eq, Ord)
+data LinkMode = Fusion | Fission deriving (Eq, Ord)
+data LinkDirection = Left | Right | Third deriving (Eq, Ord)
 
 data Link = Link {
     linkType :: LinkType,
@@ -10,7 +12,7 @@ data Link = Link {
     linkDirection :: LinkDirection,
     left :: Node,
     right :: Node,
-    third :: Node }
+    third :: Node } deriving (Eq, Ord)
 
 premises :: Link -> [Node]
 premises (Link Tensor Fusion    _ a b _) = [a, b]
@@ -32,9 +34,17 @@ mainNode (Link _ _ Third _ _ c) = c
 data Node = Node {
     formula :: Formula,
     premiseLink :: Maybe Link,
-    succedentLink :: Maybe Link }
+    succedentLink :: Maybe Link } deriving (Eq, Ord)
 
-data Atom = NP | N | S
+type ProofStructure = Set Node
+
+hypotheses :: ProofStructure -> Set Node
+hypotheses = filter ((== Nothing) . succedentLink)
+
+conclusions :: ProofStructure -> Set Node
+conclusions = filter ((== Nothing) . premiseLink)
+
+data Atom = NP | N | S deriving (Eq, Ord)
 
 data Formula = Atomic Atom
     | Formula :*: Formula
@@ -43,3 +53,4 @@ data Formula = Atomic Atom
     | Formula :+: Formula
     | Formula :-\ Formula
     | Formula :-/ Formula
+    deriving (Eq, Ord)
