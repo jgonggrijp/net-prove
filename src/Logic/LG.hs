@@ -54,3 +54,24 @@ data Formula = Atomic Atom
     | Formula :-\ Formula
     | Formula :-/ Formula
     deriving (Eq, Ord)
+
+unfoldHypothesis :: Formula -> Node
+unfoldHypothesis = unfoldHypothesis' Nothing
+
+unfoldHypothesis' :: Maybe Link -> Formula -> Node
+unfoldHypothesis' k f@(Atomic a) = Node f Nothing k
+unfoldHypothesis' k f@(g :*: h)  = third
+  where link = Link Cotensor Fusion Third left right third
+        left = unfoldHypothesis' link g
+        right = unfoldHypothesis' link h
+        third = Node f (Just link) k
+unfoldHypothesis' k f@(g :\\ h)  = right
+  where link = Link Tensor Fusion Right left right third
+        left = unfoldConclusion' link g
+        right = Node f (Just link) k
+        third = unfoldHypothesis' link h
+unfoldHypothesis' k f@(g :// h)  = left
+  where link = Link Tensor Fusion Left left right third
+        left = Node f (Just link) k
+        right = unfoldHypothesis' link h
+        third = unfoldConclusion' link g
