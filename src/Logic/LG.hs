@@ -1,10 +1,5 @@
 module Logic.LG where
 
-{-
-    This LoLa-related Haskell sourcefile is a *stub*.
-    You can help by expanding it.
--}
-
 data LinkType = Tensor | Cotensor
 
 class Link a where
