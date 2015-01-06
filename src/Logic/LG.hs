@@ -49,6 +49,11 @@ instance Link FissionCotensor where
     premises fic = [left fic, right fic]
     conclusions fic = [bottom fic]
 
+data Node formType linkUp linkDown = Node {
+    formula :: (Formula formType) => formType,
+    conclusionLink :: (Link linkUp) => Maybe linkUp,
+    premiseLink :: (Link linkDown) => Maybe linkDown }
+
 class Formula a where
     -- common functions on formulas
     -- (obviously, this should actually be in the Framework module)
