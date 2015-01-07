@@ -2,9 +2,9 @@ module Logic.LG where
 
 import qualified Data.Set as Set
 
-data LinkType = Tensor | Cotensor deriving (Eq, Ord)
-data LinkMode = Fusion | Fission deriving (Eq, Ord)
-data LinkMain = LeftT | RightT | ThirdT deriving (Eq, Ord)
+data LinkType = Tensor | Cotensor deriving (Eq, Ord, Show)
+data LinkMode = Fusion | Fission deriving (Eq, Ord, Show)
+data LinkMain = LeftT | RightT | ThirdT deriving (Eq, Ord, Show)
 
 data Link = Link {
     linkType :: LinkType,
@@ -44,7 +44,7 @@ hypotheses = Set.filter ((== Nothing) . succedentLink)
 conclusions :: ProofStructure -> Set.Set Node
 conclusions = Set.filter ((== Nothing) . premiseLink)
 
-data Atom = NP | N | S deriving (Eq, Ord)
+data Atom = NP | N | S deriving (Eq, Ord, Show)
 
 data Formula = Atomic Atom
     | Formula :*: Formula
@@ -53,7 +53,7 @@ data Formula = Atomic Atom
     | Formula :+: Formula
     | Formula :-\ Formula
     | Formula :-/ Formula
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Show)
 
 unfoldHypothesis :: Formula -> Node
 unfoldHypothesis = unfoldHypothesis' Nothing
