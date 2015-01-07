@@ -15,15 +15,15 @@ data Link = Link {
     third :: Node } deriving (Eq, Ord)
 
 premises :: Link -> [Node]
-premises (Link Tensor Fusion    _ a b _) = [a, b]
+premises (Link Tensor   Fusion  _ a b _) = [a, b]
 premises (Link Cotensor Fusion  _ _ _ c) = [c]
-premises (Link Tensor Fission   _ _ _ c) = [c]
+premises (Link Tensor   Fission _ _ _ c) = [c]
 premises (Link Cotensor Fission _ a b _) = [a, b]
 
 succedents :: Link -> [Node]
-succedents (Link Tensor Fusion    _ _ _ c) = [c]
+succedents (Link Tensor   Fusion  _ _ _ c) = [c]
 succedents (Link Cotensor Fusion  _ a b _) = [a, b]
-succedents (Link Tensor Fission   _ a b _) = [a, b]
+succedents (Link Tensor   Fission _ a b _) = [a, b]
 succedents (Link Cotensor Fission _ _ _ c) = [c]
 
 mainNode :: Link -> Node
