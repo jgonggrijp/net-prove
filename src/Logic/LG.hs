@@ -1,6 +1,6 @@
 module Logic.LG where
 
-import Data.Set (Set)
+import qualified Data.Set as Set
 
 data LinkType = Tensor | Cotensor deriving (Eq, Ord)
 data LinkMode = Fusion | Fission deriving (Eq, Ord)
@@ -36,13 +36,13 @@ data Node = Node {
     premiseLink :: Maybe Link,
     succedentLink :: Maybe Link } deriving (Eq, Ord)
 
-type ProofStructure = Set Node
+type ProofStructure = Set.Set Node
 
-hypotheses :: ProofStructure -> Set Node
-hypotheses = filter ((== Nothing) . succedentLink)
+hypotheses :: ProofStructure -> Set.Set Node
+hypotheses = Set.filter ((== Nothing) . succedentLink)
 
-conclusions :: ProofStructure -> Set Node
-conclusions = filter ((== Nothing) . premiseLink)
+conclusions :: ProofStructure -> Set.Set Node
+conclusions = Set.filter ((== Nothing) . premiseLink)
 
 data Atom = NP | N | S deriving (Eq, Ord)
 
