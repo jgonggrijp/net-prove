@@ -4,12 +4,12 @@ import Data.Set (Set)
 
 data LinkType = Tensor | Cotensor deriving (Eq, Ord)
 data LinkMode = Fusion | Fission deriving (Eq, Ord)
-data LinkDirection = Left | Right | Third deriving (Eq, Ord)
+data LinkMain = LeftT | RightT | ThirdT deriving (Eq, Ord)
 
 data Link = Link {
     linkType :: LinkType,
     linkMode :: LinkMode,
-    linkDirection :: LinkDirection,
+    linkMain :: LinkMain,
     left :: Node,
     right :: Node,
     third :: Node } deriving (Eq, Ord)
@@ -27,9 +27,9 @@ succedents (Link Tensor Fission   _ a b _) = [a, b]
 succedents (Link Cotensor Fission _ _ _ c) = [c]
 
 mainNode :: Link -> Node
-mainNode (Link _ _ Left  a _ _) = a
-mainNode (Link _ _ Right _ b _) = b
-mainNode (Link _ _ Third _ _ c) = c
+mainNode (Link _ _ LeftT  a _ _) = a
+mainNode (Link _ _ RightT _ b _) = b
+mainNode (Link _ _ ThirdT _ _ c) = c
 
 data Node = Node {
     formula :: Formula,
@@ -61,17 +61,17 @@ unfoldHypothesis = unfoldHypothesis' Nothing
 unfoldHypothesis' :: Maybe Link -> Formula -> Node
 unfoldHypothesis' k f@(Atomic a) = Node f Nothing k
 unfoldHypothesis' k f@(g :*: h)  = third
-  where link = Link Cotensor Fusion Third left right third
+  where link = Link Cotensor Fusion ThirdT left right third
         left = unfoldHypothesis' (Just link) g
         right = unfoldHypothesis' (Just link) h
         third = Node f (Just link) k
 unfoldHypothesis' k f@(g :\\ h)  = right
-  where link = Link Tensor Fusion Right left right third
+  where link = Link Tensor Fusion RightT left right third
         left = unfoldConclusion' (Just link) g
         right = Node f (Just link) k
         third = unfoldHypothesis' (Just link) h
 unfoldHypothesis' k f@(g :// h)  = left
-  where link = Link Tensor Fusion Left left right third
+  where link = Link Tensor Fusion LeftT left right third
         left = Node f (Just link) k
         right = unfoldHypothesis' (Just link) h
         third = unfoldConclusion' (Just link) g
