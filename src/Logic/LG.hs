@@ -45,7 +45,7 @@ data Link = Link {
     linkType :: LinkType,
     tentacles :: [Tentacle], -- ordered from left to right
     mainTentacle :: Int } -- index of main formula, if applicable
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Show)
 
 -- get all premises/succedents of a link
 getAll :: TentacleType -> Link -> [IndexedFormula]
