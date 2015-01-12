@@ -1,52 +1,9 @@
 module Logic.LG where
 
-import qualified Data.Set as Set
+import Data.IORef
+import qualified Data.Map as Map
 
-data LinkType = Tensor | Cotensor deriving (Eq, Ord, Show)
-data LinkMode = Fusion | Fission deriving (Eq, Ord, Show)
-data LinkMain = LeftT | RightT | ThirdT deriving (Eq, Ord, Show)
-
-data Link = Link {
-    linkType :: LinkType,
-    linkMode :: LinkMode,
-    linkMain :: LinkMain,
-    left :: Node,
-    right :: Node,
-    third :: Node } deriving (Eq, Ord)
-
-premises :: Link -> [Node]
-premises (Link Tensor   Fusion  _ a b _) = [a, b]
-premises (Link Cotensor Fusion  _ _ _ c) = [c]
-premises (Link Tensor   Fission _ _ _ c) = [c]
-premises (Link Cotensor Fission _ a b _) = [a, b]
-
-succedents :: Link -> [Node]
-succedents (Link Tensor   Fusion  _ _ _ c) = [c]
-succedents (Link Cotensor Fusion  _ a b _) = [a, b]
-succedents (Link Tensor   Fission _ a b _) = [a, b]
-succedents (Link Cotensor Fission _ _ _ c) = [c]
-
-mainNode :: Link -> Node
-mainNode (Link _ _ LeftT  a _ _) = a
-mainNode (Link _ _ RightT _ b _) = b
-mainNode (Link _ _ ThirdT _ _ c) = c
-
-data Node = Node {
-    formula :: Formula,
-    premiseLink :: Maybe Link,
-    succedentLink :: Maybe Link } deriving (Eq, Ord)
-
-type ProofStructure = Set.Set Node
-
-hypotheses :: ProofStructure -> Set.Set Node
-hypotheses = Set.filter ((== Nothing) . succedentLink)
-
-conclusions :: ProofStructure -> Set.Set Node
-conclusions = Set.filter ((== Nothing) . premiseLink)
-
-data Atom = NP | N | S deriving (Eq, Ord, Show)
-
-data Formula = Atomic Atom
+data Formula = Atom String
     | Formula :*: Formula
     | Formula :\\ Formula
     | Formula :// Formula
@@ -55,74 +12,64 @@ data Formula = Atomic Atom
     | Formula :-/ Formula
     deriving (Eq, Ord, Show)
 
-unfoldHypothesis :: Formula -> Node
-unfoldHypothesis = unfoldHypothesis' Nothing
+data Term = Variable String
+    | Term :*:: Term
+    | Term :\\: Term
+    | Term ://: Term
+    | Term :+:: Term
+    | Term :-\: Term
+    | Term :-/: Term
+    | MuBind String Term
+    | ComuBind String Term
+    | CommandLeft String Term
+    | CommandRight String Term
+    | Cut String String String Term  -- first second / third
+    deriving (Eq, Ord, Show)
 
-unfoldHypothesis' :: Maybe Link -> Formula -> Node
-unfoldHypothesis' k f@(Atomic a) = Node f Nothing k
-unfoldHypothesis' k f@(g :*: h)  = third
-  where link = Link Cotensor Fusion ThirdT left right third
-        left = unfoldHypothesis' (Just link) g
-        right = unfoldHypothesis' (Just link) h
-        third = Node f (Just link) k
-unfoldHypothesis' k f@(g :\\ h)  = right
-  where link = Link Tensor Fusion RightT left right third
-        left = unfoldConclusion' (Just link) g
-        right = Node f (Just link) k
-        third = unfoldHypothesis' (Just link) h
-unfoldHypothesis' k f@(g :// h)  = left
-  where link = Link Tensor Fusion LeftT left right third
-        left = Node f (Just link) k
-        right = unfoldHypothesis' (Just link) h
-        third = unfoldConclusion' (Just link) g
-unfoldHypothesis' k f@(g :+: h)  = third
-  where link = Link Tensor Fission ThirdT left right third
-        left = unfoldHypothesis' (Just link) g
-        right = unfoldHypothesis' (Just link) h
-        third = Node f (Just link) k
-unfoldHypothesis' k f@(g :-\ h)  = right
-  where link = Link Cotensor Fission RightT left right third
-        left = unfoldConclusion' (Just link) g
-        right = Node f (Just link) k
-        third = unfoldHypothesis' (Just link) h
-unfoldHypothesis' k f@(g :-/ h)  = left
-  where link = Link Cotensor Fission LeftT left right third
-        left = Node f (Just link) k
-        right = unfoldHypothesis' (Just link) h
-        third = unfoldConclusion' (Just link) g
+data IndexedFormula = IndexedFormula {
+    formula :: Formula,
+    term :: Term,
+    index :: Int }  -- use Data.IORef to keep a global counter
+    deriving (Eq, Ord, Show)
 
-unfoldConclusion :: Formula -> Node
-unfoldConclusion = unfoldConclusion' Nothing
+data TentacleType = Premise | Succedent deriving (Eq, Ord, Show)
 
-unfoldConclusion' :: Maybe Link -> Formula -> Node
-unfoldConclusion' k f@(Atomic a) = Node f k Nothing
-unfoldConclusion' k f@(g :*: h)  = third
-  where link = Link Tensor Fusion ThirdT left right third
-        left = unfoldConclusion' (Just link) g
-        right = unfoldConclusion' (Just link) h
-        third = Node f k (Just link)
-unfoldConclusion' k f@(g :\\ h)  = right
-  where link = Link Cotensor Fusion RightT left right third
-        left = unfoldHypothesis' (Just link) g
-        right = Node f k (Just link)
-        third = unfoldConclusion' (Just link) h
-unfoldConclusion' k f@(g :// h)  = left
-  where link = Link Cotensor Fusion LeftT left right third
-        left = Node f k (Just link)
-        right = unfoldConclusion' (Just link) h
-        third = unfoldHypothesis' (Just link) g
-unfoldConclusion' k f@(g :+: h)  = third
-  where link = Link Cotensor Fission ThirdT left right third
-        left = unfoldConclusion' (Just link) g
-        right = unfoldConclusion' (Just link) h
-        third = Node f k (Just link)
-unfoldConclusion' k f@(g :-\ h)  = right
-  where link = Link Tensor Fission RightT left right third
-        left = unfoldHypothesis' (Just link) g
-        right = Node f k (Just link)
-        third = unfoldConclusion' (Just link) h
-unfoldConclusion' k f@(g :-/ h)  = left
-  where link = Link Tensor Fission LeftT left right third
-        left = Node f k (Just link)
-        right = unfoldConclusion' (Just link) h
-        third = unfoldHypothesis' (Just link) g
+data Tentacle = Tentacle {
+    tentacleType :: TentacleType,
+    formula :: IndexedFormula }
+    deriving (Eq, Ord)
+
+data LinkType = Tensor | Cotensor | Axioma deriving (Eq, Ord, Show)
+
+data Link = Link {
+    linkType :: LinkType,
+    tentacles :: [Tentacle], -- ordered from left to right
+    mainTentacle :: Int } -- index of main formula, if applicable
+    deriving (Eq, Ord)
+
+-- get all premises/succedents of a link
+getAll :: TentacleType -> Link -> [IndexedFormula]
+getAll t = map formula . filter ((== t) . tentacleType) . tentacles
+
+mainFormula :: Link -> Maybe IndexedFormula
+mainFormula (Link Axioma _  _) = Nothing
+mainFormula (Link _      [] _) = Nothing
+mainFormula (Link _      ts n) = Just $ formula $ ts !! n
+
+data NodeType = Value | Context deriving (Eq, Ord, Show)
+
+data NodeInfo = NodeInfo {
+    nodeType :: NodeType,
+    premiseLink :: Maybe Link,
+    succedentLink :: Maybe Link }
+    deriving (Eq, Ord, Show)
+
+type CompositionGraph = Map.Map IndexedFormula NodeInfo
+
+hypotheses :: CompositionGraph -> [IndexedFormula]
+hypotheses = Map.keys . Map.filter ((== Nothing) . succedentLink)
+
+conclusions :: CompositionGraph -> [IndexedFormula]
+conclusions = Map.keys . Map.filter ((== Nothing) . premiseLink)
+
+-- unfoldHypothesis :: IO Int -> IndexedFormula -> CompositionGraph
