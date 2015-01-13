@@ -3,6 +3,23 @@ module Main where
 import System.Environment
 import Control.Monad.Trans.State
 
+--------
+-- Terms
+
+type Name = String
+data Term = Variable Name
+          | Term :<×>: Term
+          | Term :/: Term
+          | Term :\: Term
+          | Term :<+>: Term
+          | Term :</>: Term
+          | Term :<\>: Term
+          | Term :⌈ Name          -- Command left
+          | Name :⌉ Term          -- Command right
+          | (Name, Name) :// Name -- Cut
+          | Mu Name Term          -- µ-binding
+          | Mũ Name Term          -- co-µ-binding
+
 ----------------------
 -- Formula occurrences
 -- Syntactic categories of LG: Atoms, Lambek connectives (product, left & right
