@@ -56,7 +56,7 @@ isMain (Active _) = False
 
 -- there should be at most one main formula in any given tentacle list
 findMain :: [Tentacle] -> Maybe Identifier
-findMain = listToMaybe . filter isMain
+findMain = listToMaybe . map referee . filter isMain
 
 --           premises       succedents
 data Link = [Tentacle] :○: [Tentacle]  -- Tensor
@@ -77,13 +77,13 @@ mainFormula (ts :○: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (ts :●: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (_  :|: _ ) = Nothing
 
-data NodeInfo = Value   { formula     :: PositiveFormula
-                        , term        :: ValueTerm          -- see note below
+data NodeInfo = Value   { pformula    :: PositiveFormula
+                        , vterm       :: ValueTerm          -- see note below
                         , premiseOf   :: Maybe Link
                         , succedentOf :: Maybe Link
                         }
-              | Context { formula     :: NegativeFormula
-                        , term        :: ContextTerm
+              | Context { nformula    :: NegativeFormula
+                        , cterm       :: ContextTerm
                         , premiseOf   :: Maybe Link
                         , succedentOf :: Maybe Link
                         }
