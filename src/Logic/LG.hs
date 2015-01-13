@@ -1,75 +1,107 @@
 module Logic.LG where
 
-import Data.IORef
+import Data.Maybe
 import qualified Data.Map as Map
 
-data Formula = Atom String
-    | Formula :*: Formula
-    | Formula :\\ Formula
-    | Formula :// Formula
-    | Formula :+: Formula
-    | Formula :-\ Formula
-    | Formula :-/ Formula
-    deriving (Eq, Ord, Show)
+type Name = String
+type Identifier = Int  -- to be assigned using Data.IORef
 
-data Term = Variable String
-    | Term :*:: Term
-    | Term :\\: Term
-    | Term ://: Term
-    | Term :+:: Term
-    | Term :-\: Term
-    | Term :-/: Term
-    | MuBind String Term
-    | ComuBind String Term
-    | CommandLeft String Term
-    | CommandRight String Term
-    | Cut String String String Term  -- first second / third
-    deriving (Eq, Ord, Show)
+data Occurrence a = Identifier :@ a deriving (Eq, Show)
 
-data IndexedFormula = IndexedFormula {
-    formula :: Formula,
-    term :: Term,
-    index :: Int }  -- use Data.IORef to keep a global counter
-    deriving (Eq, Ord, Show)
+abstract :: Occurrence a -> a
+abstract (_ :@ x) = x
 
-data TentacleType = Premise | Succedent deriving (Eq, Ord, Show)
+data PositiveFormula = AtomP Name
+                     | Formula :<×>: Formula
+                     | Formula :<\>: Formula
+                     | Formula :</>: Formula
+                     deriving (Eq, Show)
 
-data Tentacle = Tentacle {
-    tentacleType :: TentacleType,
-    formula :: IndexedFormula }
-    deriving (Eq, Ord)
+data NegativeFormula = AtomN Name
+                     | Formula  :\:  Formula
+                     | Formula  :/:  Formula
+                     | Formula :<+>: Formula
+                     deriving (Eq, Show)
 
-data LinkType = Tensor | Cotensor | Axioma deriving (Eq, Ord, Show)
+data Formula = P PositiveFormula | N NegativeFormula deriving (Eq, Show)
 
-data Link = Link {
-    linkType :: LinkType,
-    tentacles :: [Tentacle], -- ordered from left to right
-    mainTentacle :: Int } -- index of main formula, if applicable
-    deriving (Eq, Ord, Show)
+data ValueTerm   = Variable Name
+                 | ValueTerm   :<×> ValueTerm
+                 | ContextTerm :<\> ValueTerm
+                 | ValueTerm   :</> ContextTerm
+                 | Mu Name CommandTerm
+                 deriving (Eq, Show)
 
--- get all premises/succedents of a link
-getAll :: TentacleType -> Link -> [IndexedFormula]
-getAll t = map formula . filter ((== t) . tentacleType) . tentacles
+data ContextTerm = Covariable Name
+                 | ValueTerm    :\  ContextTerm
+                 | ContextTerm  :/  ValueTerm
+                 | ContextTerm :<+> ContextTerm
+                 | Comu Name CommandTerm
+                 deriving (Eq, Show)
 
-mainFormula :: Link -> Maybe IndexedFormula
-mainFormula (Link Axioma _  _) = Nothing
-mainFormula (Link _      [] _) = Nothing
-mainFormula (Link _      ts n) = Just $ formula $ ts !! n
+data CommandTerm = Cut Name Name Name CommandTerm  -- (first second) / third
+                 | ValueTerm :⌈ Name               -- Command right
+                 | Name      :⌉ ContextTerm        -- Command left
+                 deriving (Eq, Show)
 
-data NodeType = Value | Context deriving (Eq, Ord, Show)
+data Tentacle = MainT Identifier | Active Identifier deriving (Eq, Show)
 
-data NodeInfo = NodeInfo {
-    nodeType :: NodeType,
-    premiseLink :: Maybe Link,
-    succedentLink :: Maybe Link }
-    deriving (Eq, Ord, Show)
+referee :: Tentacle -> Identifier
+referee (MainT  i) = i
+referee (Active i) = i
 
-type CompositionGraph = Map.Map IndexedFormula NodeInfo
+isMain :: Tentacle -> Bool
+isMain (MainT  _) = True
+isMain (Active _) = False
 
-hypotheses :: CompositionGraph -> [IndexedFormula]
-hypotheses = Map.keys . Map.filter ((== Nothing) . succedentLink)
+-- there should be at most one main formula in any given tentacle list
+findMain :: [Tentacle] -> Maybe Identifier
+findMain = listToMaybe . filter isMain
 
-conclusions :: CompositionGraph -> [IndexedFormula]
-conclusions = Map.keys . Map.filter ((== Nothing) . premiseLink)
+--           premises       succedents
+data Link = [Tentacle] :○: [Tentacle]  -- Tensor
+          | [Tentacle] :●: [Tentacle]  -- Cotensor
+          |  Tentacle  :|:  Tentacle   -- Axioma
+          deriving (Eq, Show)
 
--- unfoldHypothesis :: IO Int -> IndexedFormula -> CompositionGraph
+premises, succedents :: Link -> [Identifier]
+premises   (ts :○: _ ) = map referee ts
+premises   (ts :●: _ ) = map referee ts
+premises   (t  :|: _ ) = [referee t]
+succedents (_  :○: ts) = map referee ts
+succedents (_  :●: ts) = map referee ts
+succedents (_  :|: t ) = [referee t]
+
+mainFormula :: Link -> Maybe Identifier
+mainFormula (ts :○: tt) = maybe (findMain tt) Just (findMain ts)
+mainFormula (ts :●: tt) = maybe (findMain tt) Just (findMain ts)
+mainFormula (_  :|: _ ) = Nothing
+
+data NodeInfo = Value   { formula     :: PositiveFormula
+                        , term        :: ValueTerm          -- see note below
+                        , premiseOf   :: Maybe Link
+                        , succedentOf :: Maybe Link
+                        }
+              | Context { formula     :: NegativeFormula
+                        , term        :: ContextTerm
+                        , premiseOf   :: Maybe Link
+                        , succedentOf :: Maybe Link
+                        }
+              deriving (Eq, Show)
+{-
+    A value term may be associated with a negative formula or
+    a context term with a positive formula after mu/comu binding.
+    However, this will only occur during term derivation and will
+    never be important during unfolding, connecting or verification
+    and hence never needs to be represented in the graph.
+-}
+
+type CompositionGraph = Map.Map Identifier NodeInfo
+
+hypotheses :: CompositionGraph -> [Identifier]
+hypotheses = Map.keys . Map.filter (isNothing . succedentOf)
+
+conclusions :: CompositionGraph -> [Identifier]
+conclusions = Map.keys . Map.filter (isNothing . premiseOf)
+
+-- unfoldHypothesis :: IO Int -> Identifier -> CompositionGraph
