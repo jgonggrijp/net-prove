@@ -11,6 +11,8 @@ data Occurrence a = Identifier :@ a deriving (Eq, Show)
 abstract :: Occurrence a -> a
 abstract (_ :@ x) = x
 
+data Formula = P PositiveFormula | N NegativeFormula deriving (Eq, Show)
+
 data PositiveFormula = AtomP Name
                      | Formula :<×>: Formula
                      | Formula :<\>: Formula
@@ -22,8 +24,6 @@ data NegativeFormula = AtomN Name
                      | Formula  :/:  Formula
                      | Formula :<+>: Formula
                      deriving (Eq, Show)
-
-data Formula = P PositiveFormula | N NegativeFormula deriving (Eq, Show)
 
 data ValueTerm   = Variable Name
                  | ValueTerm   :<×> ValueTerm
@@ -89,11 +89,11 @@ data NodeInfo = Value   { formula     :: PositiveFormula
                         }
               deriving (Eq, Show)
 {-
-    A value term may be associated with a negative formula or
-    a context term with a positive formula after mu/comu binding.
+    A value term may be associated with a negative formula, or
+    a context term with a positive formula, after mu/comu binding.
     However, this will only occur during term derivation and will
     never be important during unfolding, connecting or verification
-    and hence never needs to be represented in the graph.
+    and hence never needs to be represented in the graph itself.
 -}
 
 type CompositionGraph = Map.Map Identifier NodeInfo
