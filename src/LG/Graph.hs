@@ -27,6 +27,8 @@ data NegativeFormula = AtomN Name
 
 data Term = V ValueTerm | E ContextTerm | C CommandTerm deriving (Eq, Show)
 
+data NodeTerm = Va ValueTerm | Ev ContextTerm deriving (Eq, Show)
+
 data ValueTerm   = Variable Name
                  | ValueTerm   :<×> ValueTerm
                  | ContextTerm :<\> ValueTerm
@@ -80,7 +82,7 @@ mainFormula (ts :●: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (_  :|: _ ) = Nothing
 
 data NodeInfo = Node { formula     :: Formula
-                     , term        :: Term
+                     , term        :: NodeTerm
                      , premiseOf   :: Maybe Link
                      , succedentOf :: Maybe Link
                      }
