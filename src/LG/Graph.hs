@@ -25,6 +25,8 @@ data NegativeFormula = AtomN Name
                      | Formula :<+>: Formula
                      deriving (Eq, Show)
 
+data Term = V ValueTerm | E ContextTerm | C CommandTerm deriving (Eq, Show)
+
 data ValueTerm   = Variable Name
                  | ValueTerm   :<×> ValueTerm
                  | ContextTerm :<\> ValueTerm
@@ -77,16 +79,11 @@ mainFormula (ts :○: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (ts :●: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (_  :|: _ ) = Nothing
 
-data NodeInfo = Value   { formula     :: Formula
-                        , vterm       :: ValueTerm
-                        , premiseOf   :: Maybe Link
-                        , succedentOf :: Maybe Link
-                        }
-              | Context { formula     :: Formula
-                        , cterm       :: ContextTerm
-                        , premiseOf   :: Maybe Link
-                        , succedentOf :: Maybe Link
-                        }
+data NodeInfo = Node { formula     :: Formula
+                     , term        :: Term
+                     , premiseOf   :: Maybe Link
+                     , succedentOf :: Maybe Link
+                     }
               deriving (Eq, Show)
 
 type CompositionGraph = Map.Map Identifier NodeInfo
