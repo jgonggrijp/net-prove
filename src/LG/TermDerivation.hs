@@ -4,17 +4,6 @@ import LG.Graph
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-data Subnet = Subnet { context       :: CompositionGraph
-                     , fringe        :: Set.Set Identifier
-                     , term          :: Term
-                     , commandLinks  :: [Link]  -- followable only
-                     , cotensorLinks :: [Link]  -- same
-                     , muLinks       :: [Link]  -- same
-                     }
-            deriving (Eq, Show)
-
-type SubnetGraph = Map.Map Identifier Subnet  -- in which subnet is this node?
-
 class Substitutable t where
     substituteV :: ValueTerm -> ValueTerm -> t -> t  -- substitute x for y in z
     substituteE :: ContextTerm -> ContextTerm -> t -> t
@@ -70,3 +59,15 @@ instance Substitutable ContextTerm' where
     substituteV x y (v  :\  w) = substituteV x y v  :\  substituteV x y w
     substituteV x y (v  :/  w) = substituteV x y v  :/  substituteV x y w
     substituteV x y (v :<+> w) = substituteV x y v :<+> substituteV x y w
+
+data Subnet = Subnet { context       :: CompositionGraph
+                     , fringe        :: Set.Set Identifier
+                     , term          :: Term
+                     , commandLinks  :: [Link]  -- followable only
+                     , cotensorLinks :: [Link]  -- same
+                     , muLinks       :: [Link]  -- same
+                     }
+            deriving (Eq, Show)
+
+type SubnetGraph = Map.Map Identifier Subnet  -- in which subnet is this node?
+
