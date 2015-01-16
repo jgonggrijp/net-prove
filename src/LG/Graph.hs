@@ -77,24 +77,17 @@ mainFormula (ts :○: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (ts :●: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (_  :|: _ ) = Nothing
 
-data NodeInfo = Value   { pformula    :: PositiveFormula
-                        , vterm       :: ValueTerm          -- see note below
+data NodeInfo = Value   { formula     :: Formula
+                        , vterm       :: ValueTerm
                         , premiseOf   :: Maybe Link
                         , succedentOf :: Maybe Link
                         }
-              | Context { nformula    :: NegativeFormula
+              | Context { formula     :: Formula
                         , cterm       :: ContextTerm
                         , premiseOf   :: Maybe Link
                         , succedentOf :: Maybe Link
                         }
               deriving (Eq, Show)
-{-
-    A value term may be associated with a negative formula, or
-    a context term with a positive formula, after mu/comu binding.
-    However, this will only occur during term derivation and will
-    never be important during unfolding, connecting or verification
-    and hence never needs to be represented in the graph itself.
--}
 
 type CompositionGraph = Map.Map Identifier NodeInfo
 
