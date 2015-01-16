@@ -15,7 +15,7 @@ data Subnet = Subnet { context       :: CompositionGraph
                      }
             deriving (Eq, Show)
 
-data SubnetGraph = Map.Map Identifier Subnet  -- in which subnet is this node?
+type SubnetGraph = Map.Map Identifier Subnet  -- in which subnet is this node?
 
 substituteValue :: ValueTerm -> ValueTerm -> Term -> Term
 substituteValue a b (V t) = V $ substituteValueV a b t
