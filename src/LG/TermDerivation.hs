@@ -60,8 +60,7 @@ instance Substitutable ContextTerm' where
     substituteV x y (v  :/  w) = substituteV x y v  :/  substituteV x y w
     substituteV x y (v :<+> w) = substituteV x y v :<+> substituteV x y w
 
-data Subnet = Subnet { context       :: CompositionGraph
-                     , fringe        :: Set.Set Identifier
+data Subnet = Subnet { nodes         :: Set.Set Identifier
                      , term          :: Term
                      , commandLinks  :: [Link]  -- followable only
                      , cotensorLinks :: [Link]  -- same
