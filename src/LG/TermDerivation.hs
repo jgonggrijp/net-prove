@@ -17,41 +17,23 @@ data Subnet = Subnet { context       :: CompositionGraph
 
 type SubnetGraph = Map.Map Identifier Subnet  -- in which subnet is this node?
 
-substituteValue :: ValueTerm -> ValueTerm -> Term -> Term
-substituteValue a b (V t) = V $ substituteValueV a b t
-substituteValue a b (E t) = E $ substituteValueE a b t
-substituteValue a b (C t) = C $ substituteValueC a b t
-
-substituteValueV :: ValueTerm -> ValueTerm -> ValueTerm -> ValueTerm
-substituteValueV (Vv (Variable s)) expansion (Vv (Variable s)) = expansion
-substituteValueV var expansion (Vv (a :<×> b)) = Vv (subV a :<×> subV b)
-  where subV = substituteValueV var expansion
-substituteValueV var expansion (Vv (a :<\> b)) = Vv (subE a :<\> subV b)
-  where subV = substituteValueV var expansion
-        subE = substituteValueE var expansion
-substituteValueV var expansion (Vv (a :</> b)) = Vv (subV a :</> subE b)
-  where subV = substituteValueV var expansion
-        subE = substituteValueE var expansion
-substituteValueV var expansion (Mu s a) = Mu s subC a
-  where subC = substituteValueC var expansion
-
-substituteValueE :: ValueTerm -> ValueTerm -> ContextTerm -> ContextTerm
-substituteValueE var expansion unmodified@(Ee (Covariable _)) = unmodified
-substituteValueE var expansion (Ee (a :<+> b)) = Ee (subE a :<+> subE b)
-  where subE = substituteValueE var expansion
-substituteValueE var expansion (Ee (a :\ b)) = Ee (subV a :\ subE b)
-  where subV = substituteValueV var expansion
-        subE = substituteValueE var expansion
-substituteValueE var expansion (Ee (a :/ b)) = Ee (subE a :/ subV b)
-  where subV = substituteValueV var expansion
-        subE = substituteValueE var expansion
-substituteValueE var expansion (Comu s a) = Comu s subC a
-  where subC = substituteValueC var expansion
-
-substituteValueC :: ValueTerm -> ValueTerm -> CommandTerm -> CommandTerm
-substituteValueC var expansion (Cut s t u a) = (Cut s t u subC a)
-  where subC = substituteValueC var expansion
-substituteValueC var expansion (s :⌈ a) = (s :⌈ subE a)
-  where subE = substituteValueE var expansion
-substituteValueC var expansion (a :⌉ s) = (subV a :⌉ s)
-  where subV = substituteValueV var expansion
+-- replace x by y in z
+substitute :: s -> s -> t -> t
+substitute x y (V z)         = V $ substitute x y z
+substitute x y (E z)         = E $ substitute x y z
+substitute x y (C z)         = C $ substitute x y z
+substitute (Vv (Variable s))   y z@(Vv (Variable t))   = if s == t then y else z
+substitute (Ee (Covariable s)) y z@(Ee (Covariable t)) = if s == t then y else z
+substitute x y (Vv z)        = Vv $ substitute x y z
+substitute x y (Ee z)        = Ee $ substitute x y z
+substitute x y (Mu s z)      = Mu s $ substitute x y z
+substitute x y (Comu s z)    = Comu s $ substitute x y z
+substitute x y (v :<×> w)    = substitute x y v :<×> substitute x y w
+substitute x y (v :<\> w)    = substitute x y v :<\> substitute x y w
+substitute x y (v :</> w)    = substitute x y v :</> substitute x y w
+substitute x y (v  :\  w)    = substitute x y v  :\  substitute x y w
+substitute x y (v  :/  w)    = substitute x y v  :/  substitute x y w
+substitute x y (v :<+> w)    = substitute x y v :<+> substitute x y w
+substitute x y (Cut s t u z) = Cut s t u $ substitute x y z
+substitute x y (z :⌈ s)      = substitute x y z :⌈ s
+substitute x y (s :⌉ z)      = s :⌉ substitute x y z
