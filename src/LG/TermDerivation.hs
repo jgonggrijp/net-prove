@@ -37,6 +37,8 @@ instance Substitutable CommandTerm where
     substitute x y (s :⌉ z)      = s :⌉ substitute x y z
 
 instance Substitutable ContextTerm where
+    -- the following matcher enables substitution of a co-mu binding
+    -- for a covariable
     substitute x y z@(Ee (Covariable s)) = case (asContext x, asContext y) of
         (Just x', Just (Ee (Covariable t))) -> if s == t then x' else z
         _ -> z
@@ -47,6 +49,8 @@ instance Substitutable ContextTerm' where
     substitute x y (v  :\  w)       = substitute x y v  :\  substitute x y w
     substitute x y (v  :/  w)       = substitute x y v  :/  substitute x y w
     substitute x y (v :<+> w)       = substitute x y v :<+> substitute x y w
+    -- given instance Substitutable ContextTerm, the following matcher
+    -- can only apply directly after recursion into (s' :⌉ z')
     substitute x y z@(Covariable s) = case (asContext x, asContext y) of
         (Just (Ee x'), Just (Ee (Covariable t))) -> if s == t then x' else z
         _ -> z
