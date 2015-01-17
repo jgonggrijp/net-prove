@@ -25,32 +25,24 @@ data NegativeFormula = AtomN Name
                      | Formula :<+>: Formula
                      deriving (Eq, Show)
 
-data NodeTerm = Va ValueTerm' | Ev ContextTerm' deriving (Eq, Show)
+data ValueTerm   = Variable Name
+                 | ValueTerm   :<×> ValueTerm
+                 | ContextTerm :<\> ValueTerm
+                 | ValueTerm   :</> ContextTerm
+                 | Mu Name CommandTerm
+                 deriving (Eq, Show)
 
-data ValueTerm'   = Variable Name
-                  | ValueTerm   :<×> ValueTerm
-                  | ContextTerm :<\> ValueTerm
-                  | ValueTerm   :</> ContextTerm
-                  deriving (Eq, Show)
+data ContextTerm = Covariable Name
+                 | ValueTerm    :\  ContextTerm
+                 | ContextTerm  :/  ValueTerm
+                 | ContextTerm :<+> ContextTerm
+                 | Comu Name CommandTerm
+                 deriving (Eq, Show)
 
-data ValueTerm    = Vv ValueTerm'
-                  | Mu Name CommandTerm
-                  deriving (Eq, Show)
-
-data ContextTerm' = Covariable Name
-                  | ValueTerm    :\  ContextTerm
-                  | ContextTerm  :/  ValueTerm
-                  | ContextTerm :<+> ContextTerm
-                  deriving (Eq, Show)
-
-data ContextTerm  = Ee ContextTerm'
-                  | Comu Name CommandTerm
-                  deriving (Eq, Show)
-
-data CommandTerm  = Cut Name Name Name CommandTerm  -- (first second) / third
-                  | ValueTerm' :⌈ Name              -- Command right
-                  | Name       :⌉ ContextTerm'      -- Command left
-                  deriving (Eq, Show)
+data CommandTerm = Cut Name Name Name CommandTerm  -- (first second) / third
+                 | ValueTerm :⌈ Name               -- Command right
+                 | Name      :⌉ ContextTerm        -- Command left
+                 deriving (Eq, Show)
 
 data Tentacle = MainT Identifier | Active Identifier deriving (Eq, Show)
 
@@ -85,12 +77,24 @@ mainFormula (ts :○: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (ts :●: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (_  :|: _ ) = Nothing
 
-data NodeInfo = Node { formula     :: Formula
-                     , term        :: NodeTerm
-                     , premiseOf   :: Maybe Link
-                     , succedentOf :: Maybe Link
-                     }
+data NodeInfo = Value   { pformula    :: PositiveFormula
+                        , vterm       :: ValueTerm          -- see note below
+                        , premiseOf   :: Maybe Link
+                        , succedentOf :: Maybe Link
+                        }
+              | Context { nformula    :: NegativeFormula
+                        , cterm       :: ContextTerm
+                        , premiseOf   :: Maybe Link
+                        , succedentOf :: Maybe Link
+                        }
               deriving (Eq, Show)
+{-
+    A value term may be associated with a negative formula, or
+    a context term with a positive formula, after mu/comu binding.
+    However, this will only occur during term derivation and will
+    never be important during unfolding, connecting or verification
+    and hence never needs to be represented in the graph itself.
+-}
 
 type CompositionGraph = Map.Map Identifier NodeInfo
 
