@@ -13,7 +13,7 @@ data Subnet = Subnet { context       :: CompositionGraph
                      }
             deriving (Eq, Show)
 
-type SubnetGraph a = Map.Map Identifier (Subnet a)  -- in which subnet is this node?
+type SubnetGraph = Map.Map Identifier Subnet  -- in which subnet is this node?
 
 class Substitutable a where
     substitute :: ValidSubstitution b => b -> b -> a -> a
@@ -38,7 +38,7 @@ instance Substitutable CommandTerm where
 
 instance Substitutable ContextTerm where
     substitute x y z@(Ee (Covariable s)) = case (asContext x, asContext y) of
-        (Just _, Just (Ee (Covariable t))) -> if s == t then x else z
+        (Just x', Just (Ee (Covariable t))) -> if s == t then x' else z
         _ -> z
     substitute x y (Ee z)                = Ee     $ substitute x y z
     substitute x y (Comu s z)            = Comu s $ substitute x y z
@@ -53,7 +53,7 @@ instance Substitutable ContextTerm' where
 
 instance Substitutable ValueTerm where
     substitute x y z@(Vv (Variable s)) = case (asValue x, asValue y) of
-        (Just _, Just (Vv (Variable t))) -> if s == t then x else z
+        (Just x', Just (Vv (Variable t))) -> if s == t then x' else z
         _ -> z
     substitute x y (Mu s z)            = Mu s $ substitute x y z
     substitute x y (Vv z)              = Vv   $ substitute x y z
