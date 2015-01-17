@@ -28,10 +28,10 @@ instance Substitutable CommandTerm where
 instance Substitutable ContextTerm where
     -- the following matcher enables substitution of a co-mu binding
     -- for a covariable
-    substitute x y z@(Ee (Covariable s)) = case (asContext x, asContext y) of
-        (Just x', Just (Ee (Covariable t))) -> if s == t then x' else z
+    substitute x y z@(E' (Covariable s)) = case (asContext x, asContext y) of
+        (Just x', Just (E' (Covariable t))) -> if s == t then x' else z
         _ -> z
-    substitute x y (Ee z)                = Ee     $ substitute x y z
+    substitute x y (E' z)                = E'     $ substitute x y z
     substitute x y (Comu s z)            = Comu s $ substitute x y z
 
 instance Substitutable ContextTerm' where
@@ -41,22 +41,22 @@ instance Substitutable ContextTerm' where
     -- given instance Substitutable ContextTerm, the following matcher
     -- can only apply directly after recursion into (s' :⌉ z')
     substitute x y z@(Covariable s) = case (asContext x, asContext y) of
-        (Just (Ee x'), Just (Ee (Covariable t))) -> if s == t then x' else z
+        (Just (E' x'), Just (E' (Covariable t))) -> if s == t then x' else z
         _ -> z
 
 instance Substitutable ValueTerm where
-    substitute x y z@(Vv (Variable s)) = case (asValue x, asValue y) of
-        (Just x', Just (Vv (Variable t))) -> if s == t then x' else z
+    substitute x y z@(V' (Variable s)) = case (asValue x, asValue y) of
+        (Just x', Just (V' (Variable t))) -> if s == t then x' else z
         _ -> z
     substitute x y (Mu s z)            = Mu s $ substitute x y z
-    substitute x y (Vv z)              = Vv   $ substitute x y z
+    substitute x y (V' z)              = V'   $ substitute x y z
 
 instance Substitutable ValueTerm' where
     substitute x y (v :<×> w)     = substitute x y v :<×> substitute x y w
     substitute x y (v :<\> w)     = substitute x y v :<\> substitute x y w
     substitute x y (v :</> w)     = substitute x y v :</> substitute x y w
     substitute x y z@(Variable s) = case (asValue x, asValue y) of
-        (Just (Vv x'), Just (Vv (Variable t))) -> if s == t then x' else z
+        (Just (V' x'), Just (V' (Variable t))) -> if s == t then x' else z
         _ -> z
 
 data Subnet = Subnet { nodes         :: Set.Set Identifier
