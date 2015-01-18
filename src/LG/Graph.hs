@@ -1,5 +1,6 @@
 module LG.Graph where
 
+import Data.List
 import Data.Maybe
 import qualified Data.Map as Map
 
@@ -76,6 +77,26 @@ mainFormula :: Link -> Maybe Identifier
 mainFormula (ts :○: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (ts :●: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (_  :|: _ ) = Nothing
+
+-- dual link representation: separate main from active, annotate
+-- tentacles with premise/succedent. WARNING: loses information!
+
+data Tentacle' = Prem Identifier | Succ Identifier deriving (Eq, Show)
+
+referee' :: Tentacle' -> Identifier
+referee' (Prem i) = i
+referee' (Succ i) = i
+
+data Link' = Maybe Tentacle' :-: [Tentacle'] deriving (Eq, Show)
+
+transpose :: Link -> Link'
+transpose link = listToMaybe (pMain ++ sMain) :-: (pActive ++ sActive)
+  where p = partition isMain $ premises link
+        s = partition isMain $ succedents link
+        pMain = map (Prem . referee) (fst p)
+        sMain = map (Succ . referee) (fst s)
+        pActive = map (Prem . referee) (snd p)
+        sActive = map (Succ . referee) (snd s)
 
 data NodeInfo = Value   { pformula    :: PositiveFormula
                         , vterm       :: ValueTerm          -- see note below
