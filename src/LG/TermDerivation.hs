@@ -14,6 +14,14 @@ data Subnet = Subnet { nodes         :: Set.Set Identifier
                      }
             deriving (Eq, Show)
 
+fromNode :: Occurrence NodeInfo -> Subnet
+fromNode (nodeID :@ nodeInfo) = Subnet (Set.singleton nodeID) nodeTerm [] [] []
+  where nodeTerm = case (term nodeInfo) of
+            (Va term') -> V (V' term')
+            (Ev term') -> E (E' term')
+
+
+
 type SubnetGraph = Map.Map Identifier Subnet  -- in which subnet is this node?
 
 data ExtractionProgress = Progress { graph        :: CompositionGraph
