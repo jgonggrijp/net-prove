@@ -40,3 +40,9 @@ extractSubnets' index node progress | Set.member index visited = progress
         subsGraph' = Set.foldr (flip Map.insert newsub) subsGraph (nodes newsub)
         progress' = Progress graph visited' newsub:subs subsGraph'
 
+expandSubnet :: Subnet -> CompositionGraph -> Occurrence NodeInfo -> Link -> Subnet
+expandSubnet net graph node link@([t1, t2] :○: [t3])  -- fusion tensor
+    | something
+  where (nodeID :@ (Node _ nodeTerm _ _)) = node
+        linkMain = fromJust $ mainFormula link
+        (Node _ linkTerm _ _) = fromJust $ Map.lookup linkMain graph
