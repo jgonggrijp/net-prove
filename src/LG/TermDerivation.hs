@@ -16,9 +16,7 @@ data Subnet = Subnet { nodes         :: Set.Set Identifier
 
 fromNode :: Occurrence NodeInfo -> Subnet
 fromNode (nodeID :@ nodeInfo) = Subnet (Set.singleton nodeID) nodeTerm [] [] []
-  where nodeTerm = case (term nodeInfo) of
-            (Va term') -> V (V' term')
-            (Ev term') -> E (E' term')
+  where nodeTerm = fromNodeTerm (term nodeInfo)
 
 consumeLink :: Subnet -> CompositionGraph -> Identifier -> Link -> Subnet
 consumeLink net graph nodeID link@(_ :○: _)

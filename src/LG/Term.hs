@@ -4,6 +4,22 @@ import LG.Graph
 -- Dependency relation will be reversed: definition of term types
 -- will move here and LG.Graph will depend on this module.
 
+fromNodeTerm :: NodeTerm -> Term
+fromNodeTerm (Va t) = V (V' t)
+fromNodeTerm (Ev t) = E (E' t)
+
+class Unwrappable a where
+    unwrap :: Term -> a  -- take off one layer of value constructor
+
+instance Unwrappable ValueTerm where
+    unwrap (V t) = t
+
+instance Unwrappable ContextTerm where
+    unwrap (E t) = t
+
+instance Unwrappable CommandTerm where
+    unwrap (C t) = t
+
 class Substitutable a where
     substitute :: ValidSubstitution b => b -> b -> a -> a
     --substitute x for y in z
@@ -13,6 +29,8 @@ class ValidSubstitution a where
     asContext  :: a -> Maybe ContextTerm
     asValue   _ = Nothing
     asContext _ = Nothing
+    asSubstitution :: NodeTerm -> a
+    asSubstitution = unwrap . fromNodeTerm
 
 instance ValidSubstitution ValueTerm where
     asValue x = Just x
