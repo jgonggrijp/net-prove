@@ -20,7 +20,14 @@ fromNode (nodeID :@ nodeInfo) = Subnet (Set.singleton nodeID) nodeTerm [] [] []
             (Va term') -> V (V' term')
             (Ev term') -> E (E' term')
 
-
+consumeLink :: Subnet -> CompositionGraph -> Identifier -> Link -> Subnet
+consumeLink net graph nodeID link@(_ :○: _)
+    | nodeID == referee' tMain = net'
+    | otherwise                = expandTentacle' net' graph tMain
+  where (Subnet nodes term commands cotensors mus) = net
+        nodeInfo@(Node _ nodeTerm _ _) = Map.lookup nodeID graph
+        (Just tMain :-: actives@[t1, t2]) = transpose link
+        ids = map referee' (tMain:actives)
 
 type SubnetGraph = Map.Map Identifier Subnet  -- in which subnet is this node?
 
