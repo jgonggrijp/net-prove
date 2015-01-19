@@ -12,7 +12,7 @@ data ValueTerm'   = Variable Name
                   | ValueTerm   :</> ContextTerm
                   deriving (Eq, Show)
 
-data ValueTerm    = Vv ValueTerm'
+data ValueTerm    = V' ValueTerm'
                   | Mu Name CommandTerm
                   deriving (Eq, Show)
 
@@ -22,7 +22,7 @@ data ContextTerm' = Covariable Name
                   | ContextTerm :<+> ContextTerm
                   deriving (Eq, Show)
 
-data ContextTerm  = Ee ContextTerm'
+data ContextTerm  = E' ContextTerm'
                   | Comu Name CommandTerm
                   deriving (Eq, Show)
 
