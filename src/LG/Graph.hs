@@ -3,56 +3,8 @@ module LG.Graph where
 import Data.Maybe
 import qualified Data.Map as Map
 
-type Name = String
-type Identifier = Int  -- to be assigned using Data.IORef
-
-data Occurrence a = Identifier :@ a deriving (Eq, Show)
-
-abstract :: Occurrence a -> a
-abstract (_ :@ x) = x
-
-data Formula = P PositiveFormula | N NegativeFormula deriving (Eq, Show)
-
-data PositiveFormula = AtomP Name
-                     | Formula :<×>: Formula
-                     | Formula :<\>: Formula
-                     | Formula :</>: Formula
-                     deriving (Eq, Show)
-
-data NegativeFormula = AtomN Name
-                     | Formula  :\:  Formula
-                     | Formula  :/:  Formula
-                     | Formula :<+>: Formula
-                     deriving (Eq, Show)
-
-data Term = V ValueTerm | E ContextTerm | C CommandTerm deriving (Eq, Show)
-
-data NodeTerm = Va ValueTerm' | Ev ContextTerm' deriving (Eq, Show)
-
-data ValueTerm'   = Variable Name
-                  | ValueTerm   :<×> ValueTerm
-                  | ContextTerm :<\> ValueTerm
-                  | ValueTerm   :</> ContextTerm
-                  deriving (Eq, Show)
-
-data ValueTerm    = Vv ValueTerm'
-                  | Mu Name CommandTerm
-                  deriving (Eq, Show)
-
-data ContextTerm' = Covariable Name
-                  | ValueTerm    :\  ContextTerm
-                  | ContextTerm  :/  ValueTerm
-                  | ContextTerm :<+> ContextTerm
-                  deriving (Eq, Show)
-
-data ContextTerm  = Ee ContextTerm'
-                  | Comu Name CommandTerm
-                  deriving (Eq, Show)
-
-data CommandTerm  = Cut Name Name Name CommandTerm  -- (first second) / third
-                  | ValueTerm' :⌈ Name              -- Command right
-                  | Name       :⌉ ContextTerm'      -- Command left
-                  deriving (Eq, Show)
+import LG.Base
+import LG.Term
 
 data Tentacle = MainT Identifier | Active Identifier deriving (Eq, Show)
 
@@ -101,5 +53,3 @@ hypotheses = Map.keys . Map.filter (isNothing . succedentOf)
 
 conclusions :: CompositionGraph -> [Identifier]
 conclusions = Map.keys . Map.filter (isNothing . premiseOf)
-
--- unfoldHypothesis :: IO Int -> Identifier -> CompositionGraph
