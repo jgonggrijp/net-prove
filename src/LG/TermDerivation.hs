@@ -18,6 +18,18 @@ fromNode :: Occurrence NodeInfo -> Subnet
 fromNode (nodeID :@ nodeInfo) = Subnet (Set.singleton nodeID) nodeTerm [] [] []
   where nodeTerm = fromNodeTerm (term nodeInfo)
 
+-- merge first subnet into second, hooking the former's term into
+-- the given (co)variable of the latter's term
+merge :: ValidSubstitution a => Subnet -> Subnet -> a -> Subnet
+merge net1 net2 v = Subnet allNodes mergeTerm mergeCommand mergeCotensor mergeMu
+  where (Subnet nodes1 term1 command1 cotensor1 mu1) = net1
+        (Subnet nodes2 term2 command2 cotensor2 mu2) = net2
+        allNodes = Set.union nodes1 nodes2
+        mergeTerm = substitute term1 v term2
+        mergeCommand = command1 ++ command2
+        mergeCotensor = cotensor1 ++ cotensor2
+        mergeMu = mu1 ++ mu2
+
 consumeLink :: Subnet -> CompositionGraph -> Identifier -> Link -> Subnet
 consumeLink net graph nodeID link@(_ :○: _)
     | nodeID == head ids = net'
