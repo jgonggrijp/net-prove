@@ -32,8 +32,8 @@ merge net1 net2 v = Subnet allNodes mergeTerm mergeCommand mergeCotensor mergeMu
 
 consumeLink :: Subnet -> CompositionGraph -> Identifier -> Link -> Subnet
 consumeLink net graph nodeID link@(_ :○: _)
-    | nodeID == head ids = net'
-    | otherwise          = expandTentacle' net' graph tMain
+    | nodeID == head ids = linkNet''
+    | otherwise          = expandTentacle' linkNet'' graph tMain
   where nodeInfo@(Node _ nodeTerm _ _) = Map.lookup nodeID graph
         (Just tMain :-: actives@[t1, t2]) = transpose link
         ids = map referee' (tMain:actives)
@@ -42,10 +42,11 @@ consumeLink net graph nodeID link@(_ :○: _)
         linkTerm = fromNodeTerm $ term $ Map.lookup (head ids) graph
         linkNet = Subnet (Set.fromList ids) linkTerm [] [] []
         sub1 | nodeID == referee' t1 = net
-                     | otherwise             = expandTentacle' (fromNode o1) graph t1
+             | otherwise             = expandTentacle' (fromNode o1) graph t1
         sub2 | nodeID == referee' t2 = net
              | otherwise             = expandTentacle' (fromNode o2) graph t2
-        --
+        linkNet' = merge sub1 linkNet $ asSubstitution $ term n1
+        linkNet'' = merge sub2 linkNet' $ asSubstitution $ term n2
 
 type SubnetGraph = Map.Map Identifier Subnet  -- in which subnet is this node?
 
