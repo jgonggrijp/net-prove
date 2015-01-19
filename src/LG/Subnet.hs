@@ -56,3 +56,30 @@ consumeLink net graph nodeID link@(_ :●: _)
         (Just tMain :-: actives) = transpose link
         net' = Subnet (Set.singleton nodeID) term [] [link] []
         net'' = merge net net' $ asSubstitution nodeTerm
+consumeLink net graph nodeID link@(t1 :|: t2)
+    | nodeID == i1 = case terms of
+        ((Va _), (Ev _)) -> commandNet
+        ((Ev _), (Va _)) -> muNet
+        _                -> expandTentacle' net graph (Succ i2)
+    | nodeID == i2 = case terms of
+        ((Va _), (Ev _)) -> commandNet'
+        ((Ev _), (Va _)) -> comuNet
+        _                -> expandTentacle' net graph (Prem i1)
+  where ids@(i1, i2) = fmap referee (t1, t2)
+        infos@(n1, n2) = fmap (flip Map.lookup graph) ids
+        terms@(term1, term2) = fmap term infos
+        f1 = formula n1
+        (Subnet is t cms cts mus) = net
+        commandNet = case f1 of
+            (P _) -> Subnet is t (link:cms) cts mus
+            (N _) -> net
+        commandNet' = case f1 of
+            (P _) -> net
+            (N _) -> Subnet is t (link:cms) cts mus
+        muNet = case f1 of
+            (P _) -> net
+            (N _) -> Subnet is t cms cts (link:mus)
+        comuNet = case f1 of
+            (P _) -> Subnet is t cms cts (link:mus)
+            (N _) -> net
+
