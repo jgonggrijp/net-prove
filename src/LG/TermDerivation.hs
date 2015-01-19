@@ -47,6 +47,14 @@ consumeLink net graph nodeID link@(_ :○: _)
              | otherwise             = expandTentacle' (fromNode o2) graph t2
         linkNet' = merge sub1 linkNet $ asSubstitution $ term n1
         linkNet'' = merge sub2 linkNet' $ asSubstitution $ term n2
+consumeLink net graph nodeID link@(_ :●: _)
+    | nodeID == referee' tMain = fromNode $ nodeID :@ nodeInfo
+    | otherwise                = net''
+  where nodeInfo@(Node _ nodeTerm _ _) = Map.lookup nodeID tMain
+        term = fromNodeTerm nodeTerm
+        (Just tMain :-: actives) = transpose link
+        net' = Subnet (Set.singleton nodeID) term [] [link] []
+        net'' = merge net net' $ asSubstitution nodeTerm
 
 type SubnetGraph = Map.Map Identifier Subnet  -- in which subnet is this node?
 
