@@ -8,16 +8,20 @@ fromNodeTerm :: NodeTerm -> Term
 fromNodeTerm (Va t) = V (V' t)
 fromNodeTerm (Ev t) = E (E' t)
 
-class Unwrappable a where
+class Wrappable a where
+    wrap :: a -> Term
     unwrap :: Term -> a  -- take off one layer of value constructor
 
-instance Unwrappable ValueTerm where
+instance Wrappable ValueTerm where
+    wrap t = V t
     unwrap (V t) = t
 
-instance Unwrappable ContextTerm where
+instance Wrappable ContextTerm where
+    wrap t = E t
     unwrap (E t) = t
 
-instance Unwrappable CommandTerm where
+instance Wrappable CommandTerm where
+    wrap t = C t
     unwrap (C t) = t
 
 class Substitutable a where
