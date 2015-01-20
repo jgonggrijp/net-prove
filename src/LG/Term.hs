@@ -51,6 +51,22 @@ instance Wrappable CommandTerm where
     wrap t = C t
     unwrap (C t) = t
 
+class Wrappable' a where
+    unwrap' :: Wrappable b => b -> a
+
+instance Wrappable' ValueTerm' where
+    unwrap' (V' t) = t
+    unwrap' (t :⌈ _) = t
+
+instance Wrappable' ContextTerm' where
+    unwrap' (E' t) = t
+    unwrap' (_ :⌉ t) = t
+
+instance Wrappable' CommandTerm where
+    unwrap' (Mu t) = t
+    unwrap' (Comu t) = t
+    unwrap' (Cut _ _ _ t) = t
+
 class Substitutable a where
     substitute :: ValidSubstitution b => b -> b -> a -> a
     --substitute x for y in z
