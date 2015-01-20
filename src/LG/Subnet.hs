@@ -90,3 +90,7 @@ expandTentacle' net graph tentacle' = case tentacle' of
   where node = lookup index graph
 
 expandNode :: Identifier -> Subnet -> Graph -> Link -> Subnet
+expandNode index net graph link | member net net' = net'
+                                | otherwise       = merge net' net var
+  where net' = consumeLink net graph index link
+        var = asSubstitution $ term $ lookup index graph
