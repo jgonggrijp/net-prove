@@ -31,6 +31,18 @@ merge net1 net2 v = Subnet allNodes mergeTerm mergeCommand mergeCotensor mergeMu
         mergeCotensor = cotensor1 ++ cotensor2
         mergeMu = mu1 ++ mu2
 
+-- test whether the former has been merged into the latter
+member :: Subnet -> Subnet -> Bool
+member net1 net2 = and [incNodes, incTerm, incCommand, incCotensor, incMu]
+  where incNodes = (nodes net1) `Set.isSubsetOf` (nodes net2)
+        incTerm = (term net1) `isSubtermOf` (term net2)
+        incCommand = (comSet net1) `Set.isSubsetOf` (comSet net2)
+        incCotensor = (cotSet net1) `Set.isSubsetOf` (cotSet net2)
+        incMu = (muSet net1) `Set.isSubsetOf` (muSet net2)
+        comSet = Set.fromList . commandLinks
+        cotSet = Set.fromList . cotensorLinks
+        muSet = Set.fromList . muLinks
+
 consumeLink :: Subnet -> CompositionGraph -> Identifier -> Link -> Subnet
 consumeLink net graph nodeID link@(_ :○: _)
     | nodeID == head ids = linkNet''
