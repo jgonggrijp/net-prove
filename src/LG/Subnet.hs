@@ -83,3 +83,8 @@ consumeLink net graph nodeID link@(t1 :|: t2)
             (P _) -> Subnet is t cms cts (link:mus)
             (N _) -> net
 
+expandTentacle' :: Subnet -> Graph -> Tentacle' -> Subnet
+expandTentacle' net graph tentacle' = case tentacle' of
+    (Prem index) -> maybe net (expandUpwards net graph) $ succedentOf node
+    (Succ index) -> maybe net (expandDownwards net graph) $ premiseOf node
+  where node = lookup index graph
