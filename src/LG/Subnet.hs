@@ -31,9 +31,9 @@ merge net1 net2 v = Subnet allNodes mergeTerm mergeCommand mergeCotensor mergeMu
         mergeCotensor = cotensor1 ++ cotensor2
         mergeMu = mu1 ++ mu2
 
--- test whether the former has been merged into the latter
-member :: Subnet -> Subnet -> Bool
-member net1 net2 = and [incNodes, incTerm, incCommand, incCotensor, incMu]
+-- test whether the latter falls within the former
+includes :: Subnet -> Subnet -> Bool
+net2 `includes` net1 = and [incNodes, incTerm, incCommand, incCotensor, incMu]
   where incNodes = (nodes net1) `Set.isSubsetOf` (nodes net2)
         incTerm = (term net1) `isSubtermOf` (term net2)
         incCommand = (comSet net1) `Set.isSubsetOf` (comSet net2)
@@ -102,7 +102,7 @@ expandTentacle' net graph tentacle' = case tentacle' of
   where node = lookup nodeID graph
 
 expandNode :: Identifier -> Subnet -> Graph -> Link -> Subnet
-expandNode nodeID net graph link | member net net' = net'
-                                 | otherwise       = merge net' net var
+expandNode nodeID net graph link | net' `includes` net = net'
+                                 | otherwise           = merge net' net var
   where net' = consumeLink net graph nodeID link
         var = asSubstitution $ term $ lookup nodeID graph
