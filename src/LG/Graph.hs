@@ -4,46 +4,8 @@ import Data.List
 import Data.Maybe
 import qualified Data.Map as Map
 
-type Name = String
-type Identifier = Int  -- to be assigned using Data.IORef
-
-data Occurrence a = Identifier :@ a deriving (Eq, Show)
-
-abstract :: Occurrence a -> a
-abstract (_ :@ x) = x
-
-data Formula = P PositiveFormula | N NegativeFormula deriving (Eq, Show)
-
-data PositiveFormula = AtomP Name
-                     | Formula :<×>: Formula
-                     | Formula :<\>: Formula
-                     | Formula :</>: Formula
-                     deriving (Eq, Show)
-
-data NegativeFormula = AtomN Name
-                     | Formula  :\:  Formula
-                     | Formula  :/:  Formula
-                     | Formula :<+>: Formula
-                     deriving (Eq, Show)
-
-data ValueTerm   = Variable Name
-                 | ValueTerm   :<×> ValueTerm
-                 | ContextTerm :<\> ValueTerm
-                 | ValueTerm   :</> ContextTerm
-                 | Mu Name CommandTerm
-                 deriving (Eq, Show)
-
-data ContextTerm = Covariable Name
-                 | ValueTerm    :\  ContextTerm
-                 | ContextTerm  :/  ValueTerm
-                 | ContextTerm :<+> ContextTerm
-                 | Comu Name CommandTerm
-                 deriving (Eq, Show)
-
-data CommandTerm = Cut Name Name Name CommandTerm  -- (first second) / third
-                 | ValueTerm :⌈ Name               -- Command right
-                 | Name      :⌉ ContextTerm        -- Command left
-                 deriving (Eq, Show)
+import LG.Base
+import LG.Term
 
 data Tentacle = MainT Identifier | Active Identifier deriving (Eq, Show)
 
@@ -98,24 +60,12 @@ transpose link = listToMaybe (pMain ++ sMain) :-: (pActive ++ sActive)
         pActive = map (Prem . referee) (snd p)
         sActive = map (Succ . referee) (snd s)
 
-data NodeInfo = Value   { pformula    :: PositiveFormula
-                        , vterm       :: ValueTerm          -- see note below
-                        , premiseOf   :: Maybe Link
-                        , succedentOf :: Maybe Link
-                        }
-              | Context { nformula    :: NegativeFormula
-                        , cterm       :: ContextTerm
-                        , premiseOf   :: Maybe Link
-                        , succedentOf :: Maybe Link
-                        }
+data NodeInfo = Node { formula     :: Formula
+                     , term        :: NodeTerm
+                     , premiseOf   :: Maybe Link
+                     , succedentOf :: Maybe Link
+                     }
               deriving (Eq, Show)
-{-
-    A value term may be associated with a negative formula, or
-    a context term with a positive formula, after mu/comu binding.
-    However, this will only occur during term derivation and will
-    never be important during unfolding, connecting or verification
-    and hence never needs to be represented in the graph itself.
--}
 
 type CompositionGraph = Map.Map Identifier NodeInfo
 
@@ -124,5 +74,3 @@ hypotheses = Map.keys . Map.filter (isNothing . succedentOf)
 
 conclusions :: CompositionGraph -> [Identifier]
 conclusions = Map.keys . Map.filter (isNothing . premiseOf)
-
--- unfoldHypothesis :: IO Int -> Identifier -> CompositionGraph
