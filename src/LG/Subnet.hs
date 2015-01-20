@@ -9,15 +9,17 @@ import LG.Graph
 
 data Subnet = Subnet { nodes         :: Set.Set Identifier
                      , term          :: Term
-                     , commandLinks  :: [Link]  -- followable only
-                     , cotensorLinks :: [Link]  -- same
-                     , muLinks       :: [Link]  -- same
+                     , commandLinks  :: Set.Set Link  -- followable only
+                     , cotensorLinks :: Set.Set Link  -- same
+                     , muLinks       :: Set.Set Link  -- same
                      }
             deriving (Eq, Show)
 
 fromNode :: Occurrence NodeInfo -> Subnet
-fromNode (nodeID :@ nodeInfo) = Subnet (Set.singleton nodeID) nodeTerm [] [] []
-  where nodeTerm = fromNodeTerm (term nodeInfo)
+fromNode (nodeID :@ nodeInfo) = Subnet onlyNodeID nodeTerm none none none
+  where onlyNodeID = Set.singleton nodeID
+        nodeTerm = fromNodeTerm (term nodeInfo)
+        none = Set.empty
 
 -- merge first subnet into second, hooking the former's term into
 -- the given (co)variable of the latter's term
@@ -27,21 +29,18 @@ merge net1 net2 v = Subnet allNodes mergeTerm mergeCommand mergeCotensor mergeMu
         (Subnet nodes2 term2 command2 cotensor2 mu2) = net2
         allNodes = Set.union nodes1 nodes2
         mergeTerm = substitute term1 v term2
-        mergeCommand = command1 ++ command2
-        mergeCotensor = cotensor1 ++ cotensor2
-        mergeMu = mu1 ++ mu2
+        mergeCommand = Set.union command1 command2
+        mergeCotensor = Set.union cotensor1 cotensor2
+        mergeMu = Set.union mu1 mu2
 
 -- test whether the latter falls within the former
 includes :: Subnet -> Subnet -> Bool
 net2 `includes` net1 = and [incNodes, incTerm, incCommand, incCotensor, incMu]
   where incNodes = (nodes net1) `Set.isSubsetOf` (nodes net2)
         incTerm = (term net1) `isSubtermOf` (term net2)
-        incCommand = (comSet net1) `Set.isSubsetOf` (comSet net2)
-        incCotensor = (cotSet net1) `Set.isSubsetOf` (cotSet net2)
-        incMu = (muSet net1) `Set.isSubsetOf` (muSet net2)
-        comSet = Set.fromList . commandLinks
-        cotSet = Set.fromList . cotensorLinks
-        muSet = Set.fromList . muLinks
+        incCommand = (commandLinks net1) `Set.isSubsetOf` (commandLinks net2)
+        incCotensor = (cotensorLinks net1) `Set.isSubsetOf` (cotensorLinks net2)
+        incMu = (muLinks net1) `Set.isSubsetOf` (muLinks net2)
 
 consumeLink :: Subnet -> CompositionGraph -> Identifier -> Link -> Subnet
 consumeLink net graph nodeID link@(_ :○: _)
@@ -53,7 +52,8 @@ consumeLink net graph nodeID link@(_ :○: _)
         [n1, n2] = map (flip Map.lookup graph) (tail ids)
         [o1, o2] = zipWith (:@) (tail ids) [n1, n2]
         linkTerm = fromNodeTerm $ term $ Map.lookup (head ids) graph
-        linkNet = Subnet (Set.fromList ids) linkTerm [] [] []
+        none = Set.empty
+        linkNet = Subnet (Set.fromList ids) linkTerm none none none
         sub1 | nodeID == referee' t1 = net
              | otherwise             = expandTentacle' (fromNode o1) graph t1
         sub2 | nodeID == referee' t2 = net
@@ -66,7 +66,8 @@ consumeLink net graph nodeID link@(_ :●: _)
   where nodeInfo@(Node _ nodeTerm _ _) = Map.lookup nodeID tMain
         term = fromNodeTerm nodeTerm
         (Just tMain :-: actives) = transpose link
-        net' = Subnet (Set.singleton nodeID) term [] [link] []
+        none = Set.empty
+        net' = Subnet (Set.singleton nodeID) term none (Set.singleton link) none
         net'' = merge net net' $ asSubstitution nodeTerm
 consumeLink net graph nodeID link@(t1 :|: t2)
     | nodeID == i1 = case terms of
@@ -83,16 +84,16 @@ consumeLink net graph nodeID link@(t1 :|: t2)
         f1 = formula n1
         (Subnet is t cms cts mus) = net
         commandNet = case f1 of
-            (P _) -> Subnet is t (link:cms) cts mus
+            (P _) -> Subnet is t (insert link cms) cts mus
             (N _) -> net
         commandNet' = case f1 of
             (P _) -> net
-            (N _) -> Subnet is t (link:cms) cts mus
+            (N _) -> Subnet is t (insert link cms) cts mus
         muNet = case f1 of
             (P _) -> net
-            (N _) -> Subnet is t cms cts (link:mus)
+            (N _) -> Subnet is t cms cts (insert link mus)
         comuNet = case f1 of
-            (P _) -> Subnet is t cms cts (link:mus)
+            (P _) -> Subnet is t cms cts (insert link mus)
             (N _) -> net
 
 expandTentacle' :: Subnet -> Graph -> Tentacle' -> Subnet
