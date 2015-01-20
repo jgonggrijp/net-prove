@@ -1,4 +1,4 @@
-module LG.Graph where
+module LG.Base where
 
 type Name = String
 type Identifier = Int
