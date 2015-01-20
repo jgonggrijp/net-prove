@@ -46,9 +46,8 @@ consumeLink :: Subnet -> CompositionGraph -> Identifier -> Link -> Subnet
 consumeLink net graph nodeID link@(_ :○: _)
     | nodeID == head ids = linkNet''
     | otherwise          = expandTentacle' linkNet'' graph tMain
-  where nodeInfo@(Node _ nodeTerm _ _) = Map.lookup nodeID graph
-        (Just tMain :-: actives@[t1, t2]) = transpose link
-        ids = map referee' (tMain:actives)
+  where (Just tMain :-: [t1, t2]) = transpose link
+        ids = map referee' [tMain, t1, t2]
         [n1, n2] = map (flip Map.lookup graph) (tail ids)
         [o1, o2] = zipWith (:@) (tail ids) [n1, n2]
         linkTerm = fromNodeTerm $ term $ Map.lookup (head ids) graph
@@ -60,27 +59,31 @@ consumeLink net graph nodeID link@(_ :○: _)
              | otherwise             = expandTentacle' (fromNode o2) graph t2
         linkNet' = merge sub1 linkNet $ asSubstitution $ term n1
         linkNet'' = merge sub2 linkNet' $ asSubstitution $ term n2
-consumeLink net graph nodeID link@(_ :●: _)
+consumeLink _ graph nodeID link@(_ :●: _)
     | nodeID == referee' tMain = fromNode $ nodeID :@ nodeInfo
-    | otherwise                = net''
-  where nodeInfo@(Node _ nodeTerm _ _) = Map.lookup nodeID tMain
+    | otherwise                = net'
+  where nodeInfo@(Node _ nodeTerm _ _) = Map.lookup nodeID graph
         term = fromNodeTerm nodeTerm
         (Just tMain :-: actives) = transpose link
         none = Set.empty
         net' = Subnet (Set.singleton nodeID) term none (Set.singleton link) none
-        net'' = merge net net' $ asSubstitution nodeTerm
 consumeLink net graph nodeID link@(t1 :|: t2)
     | nodeID == i1 = case terms of
         ((Va _), (Ev _)) -> commandNet
         ((Ev _), (Va _)) -> muNet
-        _                -> expandTentacle' net graph (Succ i2)
+        _                -> if sub2' `includes` sub2
+            then merge net sub2' t2
+            else merge sub2' net t1
     | nodeID == i2 = case terms of
         ((Va _), (Ev _)) -> commandNet'
         ((Ev _), (Va _)) -> comuNet
-        _                -> expandTentacle' net graph (Prem i1)
+        _                -> if sub1' `includes` sub1
+            then merge net sub1' t1
+            else merge sub1' net t2
   where ids@(i1, i2) = fmap referee (t1, t2)
         infos@(n1, n2) = fmap (flip Map.lookup graph) ids
         terms@(term1, term2) = fmap term infos
+        (t1, t2) = fmap asSubstitution terms
         f1 = formula n1
         (Subnet is t cms cts mus) = net
         commandNet = case f1 of
@@ -95,6 +98,9 @@ consumeLink net graph nodeID link@(t1 :|: t2)
         comuNet = case f1 of
             (P _) -> Subnet is t cms cts (insert link mus)
             (N _) -> net
+        (sub1, sub2) = fmap fromNode $ zipWith (:@) ids infos
+        sub1' = expandTentacle' sub1 graph (Prem i1)
+        sub2' = expandTentacle' sub2 graph (Succ i2)
 
 expandTentacle' :: Subnet -> Graph -> Tentacle' -> Subnet
 expandTentacle' net graph tentacle' = case tentacle' of
