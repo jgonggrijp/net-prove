@@ -85,12 +85,12 @@ consumeLink net graph nodeID link@(t1 :|: t2)
 
 expandTentacle' :: Subnet -> Graph -> Tentacle' -> Subnet
 expandTentacle' net graph tentacle' = case tentacle' of
-    (Prem index) -> maybe net (expandNode index net graph) $ succedentOf node
-    (Succ index) -> maybe net (expandNode index net graph) $ premiseOf node
-  where node = lookup index graph
+    (Prem nodeID) -> maybe net (expandNode nodeID net graph) $ succedentOf node
+    (Succ nodeID) -> maybe net (expandNode nodeID net graph) $ premiseOf node
+  where node = lookup nodeID graph
 
 expandNode :: Identifier -> Subnet -> Graph -> Link -> Subnet
-expandNode index net graph link | member net net' = net'
-                                | otherwise       = merge net' net var
-  where net' = consumeLink net graph index link
-        var = asSubstitution $ term $ lookup index graph
+expandNode nodeID net graph link | member net net' = net'
+                                 | otherwise       = merge net' net var
+  where net' = consumeLink net graph nodeID link
+        var = asSubstitution $ term $ lookup nodeID graph
