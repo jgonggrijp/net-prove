@@ -1,4 +1,4 @@
-module LG.TermDerivation where
+module LG.Subnet where
 
 import Data.Maybe
 import qualified Data.Map as Map
