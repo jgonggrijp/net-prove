@@ -98,54 +98,26 @@ instance Unifiable Link where
     ((p1 :|: s1), (p2 :|: s2)) -> unify s1 s2 u >>= unify p1 p2
     _                          -> Nothing
 
-
--- Simply try all links near the ones that you've only seen once (both precedent
--- and succedent). This could be done more efficiently (although laziness does
--- help us a lot) by already doing this at the individual link unification stage
--- but the code would be much uglier and we never have big subgraphs anyway.
-possibilities :: CompositionGraph -> Unification -> [Link]
-possibilities g (seen1x, _) = let ids = map snd seen1x
-                                  getAll f = mapMaybe (f . (g Map.!))
-                              in  getAll succedentOf ids ++ getAll premiseOf ids
-
-partialUnify' :: [Link] -> CompositionGraph -> Unification -> [Unification]
-partialUnify' (l:ls) g u@(seen1x, _) = let outerNodes     = map snd seen1x
-                                           getAll getLink = mapMaybe (getLink . (g Map.!))
-                                           nearbyLinks    = getAll succedentOf outerNodes ++
-                                                            getAll premiseOf   outerNodes
-                                       in  mapMaybe (\m -> unify l m u) nearbyLinks
-
-
--- Based on a list of possible unifications, expand the possible unifications
--- nondeterministically such that some connected set of links occurs in a graph
--- with each unification.
-partialUnify'' :: [Link] -> CompositionGraph -> [Unification] -> [Unification]
-partialUnify'' links graph = (>>= pu' links graph)
-  where pu' (l:ls) g u@(seen1x, _) = let outerNodes     = map snd seen1x
-                                         getAll getLink = mapMaybe (getLink . (g Map.!))
-                                         nearbyLinks    = getAll succedentOf outerNodes ++
-                                                          getAll premiseOf   outerNodes
-                                     in  mapMaybe (\m -> unify l m u) nearbyLinks
-
-
--- Find all possible unifications such that some link occurs in a graph.
--- Assumes that all links have at least one tentacle leading up.
-firsts :: Link -> CompositionGraph -> [Unification]
-firsts l = Map.elems . Map.mapMaybe (\n -> succedentOf n >>= unify' l)
-
-
 -- Give all possible unifications for some set of links such that the links
 -- occur in the given graph.
 partialUnify :: [Link] -> CompositionGraph -> [Unification]
 partialUnify []     _ = []
-partialUnify (l:ls) g = firsts l g where -- >>= rest ls g where
+partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
 -- To find the unifications of the first link, we simply try to unify with all
 -- links. This assumes that all links have at least one tentacle leading up.
-  firsts link = Map.elems . Map.mapMaybe (\n -> succedentOf n >>= unify' link)
+  firsts link = Map.elems $ Map.mapMaybe (\n -> succedentOf n >>= unify' link) g
 -- When we have the first set of (tentatively) possible unifications, we expand
 -- (or shrink) this set nondeterministically by attempting to unify at least all
 -- 'outer' links (that is, at least all the links that are either a premise or a
--- succedent of nodes that we've only seen once).
--- This could be done more efficiently (although laziness does help us a lot) by
--- already doing this at the individual link unification stage, but the code
--- would be much uglier and we never have big subgraphs anyway.
+-- succedent of nodes that we've only seen once). Because of this, each next
+-- link must be in some way connected to one that came before!
+-- Although laziness helps us a lot here, this could be done more efficiently by
+-- already doing it at the individual link unification stage, but the code
+-- would be much uglier, and we never have big subgraphs anyway.
+  rest []     u             = [u]
+  rest (l:ls) u@(seen1x, _) = let outerNodes   = map snd seen1x
+                                  all' getLink = mapMaybe (getLink . (g Map.!))
+                                  nearLinks    = all' succedentOf outerNodes ++
+                                                 all' premiseOf   outerNodes
+                              in  mapMaybe (\l' -> unify l l' u) nearLinks
+                                  >>= rest ls
