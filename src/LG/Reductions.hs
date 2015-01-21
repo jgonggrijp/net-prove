@@ -70,11 +70,13 @@ reduce = Map.mapMaybe (\(Node f t p s) -> case (del p, del s) of
 
 type  Unification = ([(Identifier, Identifier)], [(Identifier, Identifier)])
 class Unifiable a where
+  apply  :: Unification -> a -> a
   unify  :: a -> a -> Unification -> Maybe Unification
   unify' :: a -> a -> Maybe Unification
   unify' x y = unify x y ([],[])
 
 instance Unifiable Int where
+  apply (_, u) x = fromJust $ lookup x u
   unify x y (seen1x, seen) = case lookup x seen of
     Nothing -> Just ((x,y):seen1x, (x,y):seen)
     Just y' -> if y == y'
@@ -82,30 +84,33 @@ instance Unifiable Int where
                else Nothing
 
 instance Unifiable a => Unifiable [a] where
+  apply = fmap . apply
   unify (x:xs) (y:ys) u = unify x y u >>= unify xs ys
   unify []     []     u = Just u
   unify _      _      _ = Nothing
 
 instance Unifiable Tentacle where
+  apply u (MainT  x) = MainT  $ apply u x
+  apply u (Active x) = Active $ apply u x
   unify (MainT  x) (MainT  y) u = unify x y u
   unify (Active x) (Active y) u = unify x y u
   unify _          _          _ = Nothing
 
 instance Unifiable Link where
+  apply u (p :○: s) = apply u p :○: apply u s
+  apply u (p :●: s) = apply u p :●: apply u s
+  apply u (p :|: s) = apply u p :|: apply u s
   unify l1 l2 u = case (l1, l2) of
     ((p1 :○: s1), (p2 :○: s2)) -> unify s1 s2 u >>= unify p1 p2
     ((p1 :●: s1), (p2 :●: s2)) -> unify s1 s2 u >>= unify p1 p2
     ((p1 :|: s1), (p2 :|: s2)) -> unify s1 s2 u >>= unify p1 p2
     _                          -> Nothing
 
+
 -- Give all possible unifications for some set of links such that the links
 -- occur in the given graph.
-partialUnify :: [Link] -> CompositionGraph -> [Unification]
-partialUnify []     _ = []
-partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
 -- To find the unifications of the first link, we simply try to unify with all
 -- links. This assumes that all links have at least one tentacle leading up.
-  firsts link = Map.elems $ Map.mapMaybe (\n -> succedentOf n >>= unify' link) g
 -- When we have the first set of (tentatively) possible unifications, we expand
 -- (or shrink) this set nondeterministically by attempting to unify at least all
 -- 'outer' links (that is, at least all the links that are either a premise or a
@@ -114,6 +119,10 @@ partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
 -- Although laziness helps us a lot here, this could be done more efficiently by
 -- already doing it at the individual link unification stage, but the code
 -- would be much uglier, and we never have big subgraphs anyway.
+partialUnify :: [Link] -> CompositionGraph -> [Unification]
+partialUnify []     _ = []
+partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
+  firsts link = Map.elems $ Map.mapMaybe (\n -> succedentOf n >>= unify' link) g
   rest []     u             = [u]
   rest (l:ls) u@(seen1x, _) = let outerNodes   = map snd seen1x
                                   all' getLink = mapMaybe (getLink . (g Map.!))
@@ -121,3 +130,9 @@ partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
                                                  all' premiseOf   outerNodes
                               in  mapMaybe (\l' -> unify l l' u) nearLinks
                                   >>= rest ls
+
+
+--------------------------------------------------------------------------------
+-- Once we have a transformation rule and an applicable unification, we can
+-- actually apply it.
+
