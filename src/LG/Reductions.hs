@@ -157,7 +157,7 @@ update r graph link = update' graph (succedents link) (premises link) where
 -- transformations with identifiers that correspond to those in the graph) that
 -- can be applied to a graph
 ruleInstance :: CompositionGraph -> ProofTransformation -> [ProofTransformation]
-ruleInstance g r@(p :⤳ _) = partialUnify g p >>= return . flip apply r
+ruleInstance g r@(p :⤳ _) = map (flip apply r) (partialUnify g p)
 
 -- We need a way to deal with orphaned links...
 
