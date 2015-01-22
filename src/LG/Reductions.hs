@@ -74,11 +74,10 @@ class Unifiable a where
   unify' x y = unify x y []
 
 instance Unifiable Int where
-  apply u x   = fromJust $ lookup x u
-  unify x y u = case lookup x u of
+  apply u x   = fromJust $ lookup x u -- throws error if there is any identifier
+  unify x y u = case lookup x u of -- without translation. substitute wouldn't.
     Nothing -> Just ((x, y) : u)
-    Just y' -> if y == y' then Just u
-                          else Nothing
+    Just y' -> if y == y' then Just u else Nothing
 
 instance Unifiable a => Unifiable [a] where
   apply                 = fmap . apply
@@ -121,16 +120,14 @@ instance Unifiable ProofTransformation where
 -- link unification stage, but the code would be much uglier, and we never have
 -- big subgraphs anyway.
 partialUnify :: [Link] -> CompositionGraph -> [Unification]
-partialUnify []       g = []
-partialUnify (l1:ls1) _ = firsts l1 >>= rest ls1 where
+partialUnify []       _ = []
+partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
   firsts link = Map.elems $ Map.mapMaybe (\n -> premiseOf n >>= unify' link) g
   rest []     u = [u]
-  rest (l:ls) u = let nodes        = map snd u
-                      all' getLink = mapMaybe (getLink . (g Map.!))
-                      nearLinks    = all' premiseOf   nodes ++
-                                     all' succedentOf nodes
-                  in  mapMaybe (\l' -> unify l l' u) nearLinks >>=
-                      rest ls
+  rest (l:ls) u = let nodes = map snd u
+                      all' ref = mapMaybe (ref . (g Map.!))
+                      links = all' premiseOf nodes ++ all' succedentOf nodes
+                  in  mapMaybe (\l' -> unify l l' u) links >>= rest ls
 
 
 --------------------------------------------------------------------------------
@@ -142,8 +139,8 @@ connect, disconnect :: CompositionGraph -> [Link] -> CompositionGraph
 connect    = foldl' (update $ Just)
 disconnect = foldl' (update $ const Nothing)
 
--- Update all references that (hypothetically) exist to some link in the nodes
--- of a graph to actually exist to make them refer to that link or its absence
+-- Update all references to some (hypothetical) link that may exist to in the
+-- nodes of a graph to refer to some other link (or its absence)
 update :: (Link -> Maybe Link) -> CompositionGraph -> Link -> CompositionGraph
 update r graph link = update' graph (premises link) (succedents link) where
   updatePremise   (Node f t p s) = Node f t (r link) s
@@ -159,19 +156,32 @@ update r graph link = update' graph (premises link) (succedents link) where
 ruleInstances :: CompositionGraph -> ProofTransformation -> [ProofTransformation]
 ruleInstances g r@(p :⤳ _) = map (flip apply r) (partialUnify p g)
 
+
+-- Partition the nodes of a set of links into those at the hypothesis end, those
+-- 'inside' the links structure and those at the conclusion end, respectively
+sift :: [Link] -> ([Identifier], [Identifier], [Identifier])
+sift links = (p \\ s, p `intersect` s, s \\ p)
+  where all' = flip concatMap links
+        p    = all' premises
+        s    = all' succedents
+
+
 -- Transform the graph given an instance (!) of a proof transformation that we
 -- assume to be valid (!)
-transform' :: CompositionGraph -> ProofTransformation -> CompositionGraph
-transform' g (p :⤳ s) = let g1  = disconnect g p
-                            g2 = g1 -- We need a way to deal with orphaned links...
-                            g3 = connect g2 s --also a way to deal with [] conclusions
-                         in g3
+transformInstance :: CompositionGraph -> ProofTransformation -> CompositionGraph
+transformInstance g (p :⤳ s) = let g1  = disconnect g p
+                                   g2 = g1 -- We need a way to deal with orphaned links...
+                                   g3 = connect g2 s --also a way to deal with [] conclusions
+                               in g3
 
 
--- Partition the nodes inside a set of links into those at the hypothesis end,
--- those 'inside' the structure and those at the conclusion end respectively
-partition :: [Link] -> ([Identifier], [Identifier], [Identifier])
-partition links = (p \\ s, p `intersect` s, s \\ p)
-  where f = flip concatMap links
-        p = f premises
-        s = f succedents
+-- What nodes are orphaned after a transformation and should be deleted?
+-- What nodes were disconnected during a transformation and should be combined?
+updates :: ProofTransformation -> [Identifier]
+updates (old :⤳ new) =
+  let (oldHypotheses, oldInterior, oldConclusions) = sift old
+      (newHypotheses, newInterior, newConclusions) = sift new
+      orphans = oldInterior \\ (newHypotheses ++ newInterior ++ newConclusions)
+      divorceeH = oldHypotheses \\ newHypotheses
+      divorceeC = oldConclusions \\ newConclusions
+  in  orphans
