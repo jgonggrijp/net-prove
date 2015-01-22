@@ -120,9 +120,9 @@ instance Unifiable ProofTransformation where
 -- this could be done more efficiently by already doing it at the individual
 -- link unification stage, but the code would be much uglier, and we never have
 -- big subgraphs anyway.
-partialUnify :: CompositionGraph -> [Link] -> [Unification]
-partialUnify _ []       = []
-partialUnify g (l1:ls1) = firsts l1 >>= rest ls1 where
+partialUnify :: [Link] -> CompositionGraph -> [Unification]
+partialUnify []       g = []
+partialUnify (l1:ls1) _ = firsts l1 >>= rest ls1 where
   firsts link = Map.elems $ Map.mapMaybe (\n -> premiseOf n >>= unify' link) g
   rest []     u = [u]
   rest (l:ls) u = let nodes        = map snd u
@@ -157,7 +157,7 @@ update r graph link = update' graph (premises link) (succedents link) where
 -- transformations with identifiers that correspond to those in the graph) that
 -- can be applied to a graph
 ruleInstances :: CompositionGraph -> ProofTransformation -> [ProofTransformation]
-ruleInstances g r@(p :⤳ _) = map (flip apply r) (partialUnify g p)
+ruleInstances g r@(p :⤳ _) = map (flip apply r) (partialUnify p g)
 
 -- Transform the graph given an instance (!) of a proof transformation that we
 -- assume to be valid (!)
