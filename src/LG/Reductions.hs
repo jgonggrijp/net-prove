@@ -46,19 +46,6 @@ g2    = interaction [[ Active 1 ] :○: [ Active 0, Active 4 ], -- Commutativity
 g4    = interaction [[ Active 2 ] :○: [ Active 3, Active 0 ], -- Commutativity
                      [ Active 1, Active 0 ] :○: [ Active 4 ]]
 
---------------------------------------------------------------------------------
--- Collapse axiom links so that the composition graph may be interpreted as a
--- proof net.
--- After this, the formula and term parts become meaningless (?)
-
-reduce :: CompositionGraph -> CompositionGraph
-reduce = Map.mapMaybe adjust where
-  adjust (Node f t Nothing (Just (_ :|: _))) = Nothing
-  adjust (Node f t (Just (_ :|: _)) Nothing) = Nothing
-  adjust (Node f t s                p)       = Just $ Node f t (del s) (del p)
-  del (Just (_ :|: _))                       = Nothing
-  del other                                  = other
-
 
 --------------------------------------------------------------------------------
 -- An instance of the unifiable class represents an object that can be wholly
@@ -131,15 +118,29 @@ partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
 
 
 --------------------------------------------------------------------------------
--- Once we have a transformation rule and a way to unify it with the graph
--- structure, we can start actually changing the graph
+-- Net manipulation
+
+-- Delete all given nodes from a graph. Mind any references in other links!
+kill :: CompositionGraph -> [Identifier] -> CompositionGraph
+kill = foldl' $ flip Map.delete
+
+-- Identify 'lost' hypotheses and conclusions with eachother. We assume that the
+-- 'hypotheses' in the first list are not actually the premise of any link
+-- anymore, and that the 'conclusions' are not the succedent of any link.
+reconnect :: CompositionGraph -> [Identifier] -> [Identifier] -> CompositionGraph
+reconnect g []  []  = g
+reconnect g [h] [c] =
+  let up = succedentOf $ g Map.! h
+      g' = Map.adjust (\(Node f t down _) -> Node f t down up) c g
+        in Map.delete h g'
+reconnect _ _ _ = error "Cannot reconnect multiple disconnected hypotheses and conclusions. Make sure that the proof transformations are sensible."
 
 -- Remove/add the succedentOf/premiseOf link references to the nodes of a graph
 connect, disconnect :: CompositionGraph -> [Link] -> CompositionGraph
 connect    = foldl' (update $ Just)
 disconnect = foldl' (update $ const Nothing)
 
--- Update all references to some (hypothetical) link that may exist to in the
+-- Update all references to some (hypothetical) link that may exist in the
 -- nodes of a graph to refer to some other link (or its absence)
 update :: (Link -> Maybe Link) -> CompositionGraph -> Link -> CompositionGraph
 update r graph link = update' graph (premises link) (succedents link) where
@@ -148,6 +149,21 @@ update r graph link = update' graph (premises link) (succedents link) where
   update' g' (k:ks) s = update' (Map.adjust updatePremise   k g') ks s
   update' g' p (k:ks) = update' (Map.adjust updateSuccedent k g') p ks
   update' g' _      _ = g'
+
+
+--------------------------------------------------------------------------------
+-- Collapse axiom links so that the composition graph may be interpreted as a
+-- proof net.
+-- After this, the formula and term parts become meaningless (?)
+
+reduce :: CompositionGraph -> CompositionGraph
+reduce = Map.mapMaybe adjust where
+  adjust (Node f t Nothing (Just (_ :|: _))) = Nothing
+  adjust (Node f t (Just (_ :|: _)) Nothing) = Nothing
+  adjust (Node f t s                p)       = Just $ Node f t (del s) (del p)
+  del (Just (_ :|: _))                       = Nothing
+  del other                                  = other
+
 
 
 -- Get all the instances of a proof transformation rule (that is, the
@@ -175,13 +191,18 @@ transformInstance g (p :⤳ s) = let g1  = disconnect g p
                                in g3
 
 
--- What nodes are orphaned after a transformation and should be deleted?
--- What nodes were disconnected during a transformation and should be combined?
-updates :: ProofTransformation -> [Identifier]
-updates (old :⤳ new) =
+-- Get all proof nets that may result when applying some proof transformation
+-- to a graph. The proof transformation must be instantiated with identifiers
+-- as they occur in the graph.
+transform :: CompositionGraph -> ProofTransformation -> [CompositionGraph]
+transform graph (old :⤳ new) =
   let (oldHypotheses, oldInterior, oldConclusions) = sift old
       (newHypotheses, newInterior, newConclusions) = sift new
-      orphans = oldInterior \\ (newHypotheses ++ newInterior ++ newConclusions)
-      divorceeH = oldHypotheses \\ newHypotheses
-      divorceeC = oldConclusions \\ newConclusions
-  in  orphans
+      orphans = oldInterior  \\ newInterior
+      widowH  = oldHypotheses \\ newHypotheses
+      widowC  = oldConclusions \\ newConclusions
+      g1      = disconnect graph old
+      g2      = connect g1 new
+      g3      = kill g2 orphans
+      g4      = reconnect g3 widowH widowC
+  in [g4]
