@@ -50,14 +50,20 @@ g4    = interaction [[ Active 2 ] :○: [ Active 3, Active 0 ], -- Commutativity
 -- Eliminate axiom links so that the composition graph may be interpreted as a
 -- proof structure. (Note that this also deletes any unconnected subgraph
 -- consisting of no links or only axiom links!)
--- After this, the formula and term parts become meaningless
+
+
+
+-- Collapse axiom links so that the composition graph may be interpreted as a
+-- proof net
+-- After this, the formula and term parts become meaningless (?)
 
 reduce :: CompositionGraph -> CompositionGraph
-reduce = Map.mapMaybe (\(Node f t p s) -> case (del p, del s) of
-  (Nothing, Nothing) -> Nothing
-  (p', s')           -> Just $ Node f t p' s')
-  where del (Just (_ :|: _)) = Nothing
-        del other            = other
+reduce g = Map.mapMaybe f where
+  f (Node f t Nothing (Just _ :|: _)) = Nothing
+  f (Node f t (Just _ :|: _) Nothing) = Nothing
+  f (Node f t s                    p) = Just $ Node f t (del s) (del p)
+  del (Just (_ :|: _))                = Nothing
+  del other                           = other
 
 
 --------------------------------------------------------------------------------
@@ -89,11 +95,11 @@ instance Unifiable a => Unifiable [a] where
   unify _      _      _ = Nothing
 
 instance Unifiable Tentacle where
-  apply u (MainT  x)            = MainT  $ apply u x
-  apply u (Active x)            = Active $ apply u x
-  unify (MainT  x) (MainT  y) u = unify x y u
-  unify (Active x) (Active y) u = unify x y u
-  unify _          _          _ = Nothing
+  apply u (MainT  x)          = MainT  $ apply u x
+  apply u (Active x)          = Active $ apply u x
+  unify (MainT  x) (MainT  y) = unify x y
+  unify (Active x) (Active y) = unify x y
+  unify _          _          = const Nothing
 
 instance Unifiable Link where
   apply u (p :○: s) = apply u p :○: apply u s
@@ -141,15 +147,17 @@ partialUnify g (l1:ls1) = firsts l1 >>= rest ls1 where
 
 -- Remove/add the succedentOf/premiseOf link references to the nodes of a graph
 connect, disconnect :: CompositionGraph -> [Link] -> CompositionGraph
-connect    = foldl' (update Just)
+connect    = foldl' (update $ Just)
 disconnect = foldl' (update $ const Nothing)
 
+-- Update all references that (hypothetically) exist to some link in the nodes
+-- of a graph to actually exist to make them refer to that link or its absence
 update :: (Link -> Maybe Link) -> CompositionGraph -> Link -> CompositionGraph
-update r graph link = update' graph (succedents link) (premises link) where
-  updateTop (Node f t p s) = Node f t p (r link)
-  updateBot (Node f t p s) = Node f t (r link) s
-  update' g' (k:ks) s = update' (Map.adjust updateBot k g') ks s
-  update' g' p (k:ks) = update' (Map.adjust updateTop k g') p ks
+update r graph link = update' graph (premises link) (succedents link) where
+  updatePremise   (Node f t p s) = Node f t (r link) s
+  updateSuccedent (Node f t p s) = Node f t p (r link)
+  update' g' (k:ks) s = update' (Map.adjust updatePremise   k g') ks s
+  update' g' p (k:ks) = update' (Map.adjust updateSuccedent k g') p ks
   update' g' _      _ = g'
 
 
@@ -164,6 +172,5 @@ ruleInstances g r@(p :⤳ _) = map (flip apply r) (partialUnify g p)
 transform' :: CompositionGraph -> ProofTransformation -> CompositionGraph
 transform' g (p :⤳ s) = let g1  = disconnect g p
                             g2 = g1 -- We need a way to deal with orphaned links...
-                            g3 = connect g2 s
+                            g3 = connect g2 s --also a way to deal with [] conclusions
                          in g3
-
