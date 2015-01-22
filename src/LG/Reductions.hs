@@ -131,13 +131,13 @@ partialUnify g (l1:ls1) = firsts l1 >>= rest ls1 where
                                   all' getLink = mapMaybe (getLink . (g Map.!))
                                   nearLinks    = all' premiseOf   outerNodes ++
                                                  all' succedentOf outerNodes
-                              in  mapMaybe (\l' -> unify l l' u) nearLinks
-                                  >>= rest ls
+                              in  mapMaybe (\l' -> unify l l' u) nearLinks >>=
+                                  rest ls
 
 
 --------------------------------------------------------------------------------
--- Once we have a transformation rule and an applicable unification, we can
--- actually apply it.
+-- Once we have a transformation rule and a way to unify it with the graph
+-- structure, we can start actually changing the graph
 
 -- Remove/add the succedentOf/premiseOf link references to the nodes of a graph
 connect, disconnect :: CompositionGraph -> [Link] -> CompositionGraph
@@ -151,3 +151,17 @@ update r graph link = update' graph (succedents link) (premises link) where
   update' g' (k:ks) s = update' (Map.adjust updateBot k g') ks s
   update' g' p (k:ks) = update' (Map.adjust updateTop k g') p ks
   update' g' _      _ = g'
+
+
+-- Get all the instances of a proof transformation rule (that is, the
+-- transformations with identifiers that correspond to those in the graph) that
+-- can be applied to a graph
+ruleInstance :: CompositionGraph -> ProofTransformation -> [ProofTransformation]
+ruleInstance g r@(p :⤳ _) = partialUnify g p >>= return . flip apply r
+
+-- We need a way to deal with orphaned links...
+
+{-
+partialApply :: CompositionGraph -> ProofTransformation -> [CompositionGraph]
+partialApply g t@(p :⤳ s) = partialUnify g p >>= map (flip apply t)
+-}
