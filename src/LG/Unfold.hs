@@ -1,14 +1,23 @@
 module LG.Unfold where
 import LG.Graph
 
+-- This module contains a number of functions that are used to unfold a given formula in a composition graph.
+-- Operator-specific rules are applied to create a link connecting the formula with its sub-formulae.
+-- See Moortgat & Moot (2012), p. 6-7 for unfolding on proof structures without terms, and p. 24 for their term-annotated counterparts.
+--
+-- For every node generated, a twin node is created an connected to the original node through an axioma link. (See M&M, p. 23: Definition 3.2; bullet 1)
+-- The process is repeated on these twin nodes until we hit atomic nodes.
+-- This module generates terms based on node identifiers, and so are guaranteed to be unique.
+
 ---------------------
 --- UNFOLD HYPOTHESIS
 ---------------------
-unfoldHypothesis f@(P _) idCounter = unfoldHypothesis' f term Nothing idCounter
-  where term = (Va (Variable (show idCounter)))
-unfoldHypothesis f@(N _) idCounter = unfoldHypothesis' f term Nothing idCounter
-  where term = (Ev (Covariable (show idCounter)))
 
+-- Wrapper functions
+unfoldHypothesis f@(P _) term idCounter = unfoldHypothesis' f (Va (Variable term)) Nothing idCounter
+unfoldHypothesis f@(N _) term idCounter = unfoldHypothesis' f (Ev (Covariable term)) Nothing idCounter
+
+-- unfoldHypothesis' first creates a copy of the given formula and connects the original and the copy to each other through an axioma link. After that, it will see whether it can do an unfolding, based on whether the formula is complex and so has an operator link associated with it. (See M&M, p. 24 for a list of the links.)
 unfoldHypothesis' f defaultTerm l idCounter = (firstId, nodes++aNodes++bNodes, bCount)
     where -- Common to all unfoldings: first create an axioma link
           firstId  = idCounter+0
@@ -20,7 +29,7 @@ unfoldHypothesis' f defaultTerm l idCounter = (firstId, nodes++aNodes++bNodes, b
           -- Formula-specific unfold info
           (unfoldTerm, operatorLink, aNodes, bNodes, bCount) = getUnfoldInfoH f mainId newCount
 
--- Atoms: terminal nodes for unfolding
+-- Atoms: terminal nodes when unfolding
 getUnfoldInfoH f@(P (AtomP _)) mainId newCount = (Va (Variable   (show mainId)), Nothing, [], [], newCount)
 getUnfoldInfoH f@(N (AtomN _)) mainId newCount = (Ev (Covariable (show mainId)), Nothing, [], [], newCount)
 
