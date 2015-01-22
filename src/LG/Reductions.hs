@@ -47,14 +47,8 @@ g4    = interaction [[ Active 2 ] :○: [ Active 3, Active 0 ], -- Commutativity
                      [ Active 1, Active 0 ] :○: [ Active 4 ]]
 
 --------------------------------------------------------------------------------
--- Eliminate axiom links so that the composition graph may be interpreted as a
--- proof structure. (Note that this also deletes any unconnected subgraph
--- consisting of no links or only axiom links!)
-
-
-
 -- Collapse axiom links so that the composition graph may be interpreted as a
--- proof net
+-- proof net.
 -- After this, the formula and term parts become meaningless (?)
 
 reduce :: CompositionGraph -> CompositionGraph
@@ -172,3 +166,12 @@ transform' g (p :⤳ s) = let g1  = disconnect g p
                             g2 = g1 -- We need a way to deal with orphaned links...
                             g3 = connect g2 s --also a way to deal with [] conclusions
                          in g3
+
+
+-- Partition the nodes inside a set of links into those at the hypothesis end,
+-- those 'inside' the structure and those at the conclusion end respectively
+partition :: [Link] -> ([Identifier], [Identifier], [Identifier])
+partition links = (p \\ s, p `intersect` s, s \\ p)
+  where f = flip concatMap links
+        p = f premises
+        s = f succedents
