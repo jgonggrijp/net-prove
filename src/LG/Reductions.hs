@@ -58,35 +58,33 @@ g4    = interaction [[ Active 2 ] :○: [ Active 3, Active 0 ], -- Commutativity
 -- After this, the formula and term parts become meaningless (?)
 
 reduce :: CompositionGraph -> CompositionGraph
-reduce g = Map.mapMaybe f where
-  f (Node f t Nothing (Just _ :|: _)) = Nothing
-  f (Node f t (Just _ :|: _) Nothing) = Nothing
-  f (Node f t s                    p) = Just $ Node f t (del s) (del p)
-  del (Just (_ :|: _))                = Nothing
-  del other                           = other
+reduce = Map.mapMaybe adjust where
+  adjust (Node f t Nothing (Just (_ :|: _))) = Nothing
+  adjust (Node f t (Just (_ :|: _)) Nothing) = Nothing
+  adjust (Node f t s                p)       = Just $ Node f t (del s) (del p)
+  del (Just (_ :|: _))                       = Nothing
+  del other                                  = other
 
 
 --------------------------------------------------------------------------------
 -- An instance of the unifiable class represents an object that can be wholly
 -- unified with another object of the same type, while respecting and updating
--- previous unifications. We also keep track of identifiers that occur once
--- (fst) and those that occur more often (snd).
+-- previous unifications.
 -- Note that [x,y] unifies with [z,z], but [z,z] does not unify with [x,y].
 
-type  Unification = ([(Identifier, Identifier)], [(Identifier, Identifier)])
+type  Unification = [(Identifier, Identifier)]
 class Unifiable a where
   apply  :: Unification -> a -> a
   unify  :: a -> a -> Unification -> Maybe Unification
   unify' :: a -> a -> Maybe Unification
-  unify' x y = unify x y ([],[])
+  unify' x y = unify x y []
 
 instance Unifiable Int where
-  apply (_, u) x           = fromJust $ lookup x u
-  unify x y (seen1x, seen) = case lookup x seen of
-    Nothing -> Just ((x,y):seen1x, (x,y):seen)
-    Just y' -> if y == y'
-               then Just (Data.List.delete (x,y) seen1x, seen)
-               else Nothing
+  apply u x   = fromJust $ lookup x u
+  unify x y u = case lookup x u of
+    Nothing -> Just ((x, y) : u)
+    Just y' -> if y == y' then Just u
+                          else Nothing
 
 instance Unifiable a => Unifiable [a] where
   apply                 = fmap . apply
@@ -121,24 +119,24 @@ instance Unifiable ProofTransformation where
 -- To find the unifications of the first link, we simply try to unify with all
 -- links. This assumes that all links have at least one tentacle leading up.
 -- When we have the first set of (tentatively) possible unifications, we expand
--- (or shrink) this set nondeterministically by attempting to unify at least all
--- 'outer' links (that is, at least all the links that have the nodes that we've
--- only seen once as a premise or a succedent). Note that this requires each
--- next link to be in some way connected to one that came before!
--- Although laziness helps us a lot here, this could be done more efficiently by
--- already doing it at the individual link unification stage, but the code
--- would be much uglier, and we never have big subgraphs anyway.
+-- (or shrink) this set nondeterministically by attempting to unify all
+-- neighbour links (that is, all links that are connected to nodes that we've
+-- seen before). Note that this requires each next link to be in some way
+-- connected to one that came before! Although laziness helps us a lot here,
+-- this could be done more efficiently by already doing it at the individual
+-- link unification stage, but the code would be much uglier, and we never have
+-- big subgraphs anyway.
 partialUnify :: CompositionGraph -> [Link] -> [Unification]
 partialUnify _ []       = []
 partialUnify g (l1:ls1) = firsts l1 >>= rest ls1 where
   firsts link = Map.elems $ Map.mapMaybe (\n -> premiseOf n >>= unify' link) g
-  rest []     u             = [u]
-  rest (l:ls) u@(seen1x, _) = let outerNodes   = map snd seen1x
-                                  all' getLink = mapMaybe (getLink . (g Map.!))
-                                  nearLinks    = all' premiseOf   outerNodes ++
-                                                 all' succedentOf outerNodes
-                              in  mapMaybe (\l' -> unify l l' u) nearLinks >>=
-                                  rest ls
+  rest []     u = [u]
+  rest (l:ls) u = let nodes        = map snd u
+                      all' getLink = mapMaybe (getLink . (g Map.!))
+                      nearLinks    = all' premiseOf   nodes ++
+                                     all' succedentOf nodes
+                  in  mapMaybe (\l' -> unify l l' u) nearLinks >>=
+                      rest ls
 
 
 --------------------------------------------------------------------------------
