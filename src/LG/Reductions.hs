@@ -156,12 +156,14 @@ update r graph link = update' graph (succedents link) (premises link) where
 -- Get all the instances of a proof transformation rule (that is, the
 -- transformations with identifiers that correspond to those in the graph) that
 -- can be applied to a graph
-ruleInstance :: CompositionGraph -> ProofTransformation -> [ProofTransformation]
-ruleInstance g r@(p :⤳ _) = map (flip apply r) (partialUnify g p)
+ruleInstances :: CompositionGraph -> ProofTransformation -> [ProofTransformation]
+ruleInstances g r@(p :⤳ _) = map (flip apply r) (partialUnify g p)
 
--- We need a way to deal with orphaned links...
+-- Transform the graph given an instance (!) of a proof transformation that we
+-- assume to be valid (!)
+transform' :: CompositionGraph -> ProofTransformation -> CompositionGraph
+transform' g (p :⤳ s) = let g1  = disconnect g p
+                            g2 = g1 -- We need a way to deal with orphaned links...
+                            g3 = connect g2 s
+                         in g3
 
-{-
-partialApply :: CompositionGraph -> ProofTransformation -> [CompositionGraph]
-partialApply g t@(p :⤳ s) = partialUnify g p >>= map (flip apply t)
--}
