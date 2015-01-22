@@ -120,25 +120,29 @@ partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
 --------------------------------------------------------------------------------
 -- Net manipulation
 
+
 -- Delete all given nodes from a graph. Mind any references in other links!
-kill :: CompositionGraph -> [Identifier] -> CompositionGraph
-kill = foldl' $ flip Map.delete
+kill :: [Identifier] -> CompositionGraph -> CompositionGraph
+kill = flip $ foldl' $ flip Map.delete
+
 
 -- Identify 'lost' hypotheses and conclusions with eachother. We assume that the
 -- 'hypotheses' in the first list are not actually the premise of any link
 -- anymore, and that the 'conclusions' are not the succedent of any link.
-reconnect :: CompositionGraph -> [Identifier] -> [Identifier] -> CompositionGraph
-reconnect g []  []  = g
-reconnect g [h] [c] =
+reconnect :: [Identifier] -> [Identifier] -> CompositionGraph -> CompositionGraph
+reconnect []  []  g = g
+reconnect [h] [c] g =
   let up = succedentOf $ g Map.! h
       g' = Map.adjust (\(Node f t down _) -> Node f t down up) c g
         in Map.delete h g'
 reconnect _ _ _ = error "Cannot reconnect multiple disconnected hypotheses and conclusions. Make sure that the proof transformations are sensible."
 
+
 -- Remove/add the succedentOf/premiseOf link references to the nodes of a graph
-connect, disconnect :: CompositionGraph -> [Link] -> CompositionGraph
-connect    = foldl' (update $ Just)
-disconnect = foldl' (update $ const Nothing)
+connect, disconnect :: [Link] -> CompositionGraph -> CompositionGraph
+connect    = flip $ foldl' (update $ Just)
+disconnect = flip $ foldl' (update $ const Nothing)
+
 
 -- Update all references to some (hypothetical) link that may exist in the
 -- nodes of a graph to refer to some other link (or its absence)
@@ -151,11 +155,8 @@ update r graph link = update' graph (premises link) (succedents link) where
   update' g' _      _ = g'
 
 
---------------------------------------------------------------------------------
--- Collapse axiom links so that the composition graph may be interpreted as a
--- proof net.
--- After this, the formula and term parts become meaningless (?)
-
+-- Collapse axiom links so that the composition graph may be interpreted
+-- proof net directly.
 reduce :: CompositionGraph -> CompositionGraph
 reduce = Map.mapMaybe adjust where
   adjust (Node f t Nothing (Just (_ :|: _))) = Nothing
@@ -163,7 +164,6 @@ reduce = Map.mapMaybe adjust where
   adjust (Node f t s                p)       = Just $ Node f t (del s) (del p)
   del (Just (_ :|: _))                       = Nothing
   del other                                  = other
-
 
 
 -- Get all the instances of a proof transformation rule (that is, the
@@ -182,27 +182,17 @@ sift links = (p \\ s, p `intersect` s, s \\ p)
         s    = all' succedents
 
 
--- Transform the graph given an instance (!) of a proof transformation that we
--- assume to be valid (!)
-transformInstance :: CompositionGraph -> ProofTransformation -> CompositionGraph
-transformInstance g (p :⤳ s) = let g1  = disconnect g p
-                                   g2 = g1 -- We need a way to deal with orphaned links...
-                                   g3 = connect g2 s --also a way to deal with [] conclusions
-                               in g3
-
-
--- Get all proof nets that may result when applying some proof transformation
--- to a graph. The proof transformation must be instantiated with identifiers
--- as they occur in the graph.
-transform :: CompositionGraph -> ProofTransformation -> [CompositionGraph]
+-- Get the proof net that results when applying some proof transformation to a
+-- graph. The proof transformation must be instantiated with identifiers as they
+-- occur in the graph.
+transform :: CompositionGraph -> ProofTransformation -> CompositionGraph
 transform graph (old :⤳ new) =
   let (oldHypotheses, oldInterior, oldConclusions) = sift old
       (newHypotheses, newInterior, newConclusions) = sift new
       orphans = oldInterior  \\ newInterior
-      widowH  = oldHypotheses \\ newHypotheses
-      widowC  = oldConclusions \\ newConclusions
-      g1      = disconnect graph old
-      g2      = connect g1 new
-      g3      = kill g2 orphans
-      g4      = reconnect g3 widowH widowC
-  in [g4]
+      widower = oldHypotheses \\ newHypotheses
+      widow   = oldConclusions \\ newConclusions
+  in reconnect widower widow $ kill orphans $ connect new $ disconnect old graph
+
+
+--isTree
