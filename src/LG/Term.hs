@@ -139,6 +139,22 @@ instance Substitutable CommandTerm where
     substitute x y (z :⌈ s)      = substitute x y z :⌈ s
     substitute x y (s :⌉ z)      = s :⌉ substitute x y z
 
+isSubtermOf :: Term -> Term -> Bool
+t1 `isSubtermOf` t2 = t1 == t2 || case t2 of
+    (V (V' (Variable _))) -> False
+    (V (V' (t2' :<×> t2''))) -> t1 `isSubtermOf` (V t2') || t1 `isSubtermOf` (V t2'')
+    (V (V' (t2' :<\> t2''))) -> t1 `isSubtermOf` (E t2') || t1 `isSubtermOf` (V t2'')
+    (V (V' (t2' :</> t2''))) -> t1 `isSubtermOf` (V t2') || t1 `isSubtermOf` (E t2'')
+    (V (Mu _ t2')) -> t1 `isSubtermOf` (C t2')
+    (E (E' (Covariable _))) -> False
+    (E (E' (t2'  :\  t2''))) -> t1 `isSubtermOf` (V t2') || t1 `isSubtermOf` (E t2'')
+    (E (E' (t2'  :/  t2''))) -> t1 `isSubtermOf` (E t2') || t1 `isSubtermOf` (V t2'')
+    (E (E' (t2' :<+> t2''))) -> t1 `isSubtermOf` (E t2') || t1 `isSubtermOf` (E t2'')
+    (E (Comu _ t2')) -> t1 `isSubtermOf` (C t2')
+    (C (t2' :⌈ _  )) -> t1 `isSubtermOf` (V (V' t2'))
+    (C (_   :⌉ t2')) -> t1 `isSubtermOf` (E (E' t2'))
+    (C (Cut _ _ _ t2')) -> t1 `isSubtermOf` (C t2')
+
 {-
 class SubtermQueryable a where
     isSubtermOf :: Term -> a -> Bool
@@ -152,8 +168,8 @@ instance SubtermQueryable Term where
 
 instance SubtermQueryable ValueTerm where
     t1@(V t1') `isSubtermOf` t2 | t1' == t2 = True
-                                | otherwise = t1 `isSubtermOf` (unwrap' t2)
-    t1 `isSubtermOf` t2 = t1 `isSubtermOf` (unwrap' t2)
+                                | otherwise = t1 `isSubtermOf` (unwrapV t2)
+    t1 `isSubtermOf` t2 = t1 `isSubtermOf` (unwrapV t2)
 
 instance SubtermQueryable ValueTerm' where
     t1 `isSubtermOf` t2@(Variable _) = case t1 of
@@ -168,8 +184,8 @@ instance SubtermQueryable ValueTerm' where
 
 instance SubtermQueryable ContextTerm where
     t1@(E t1') `isSubtermOf` t2 | t1' == t2 = True
-                                | otherwise = t1 `isSubtermOf` (unwrap' t2)
-    t1 `isSubtermOf` t2 = t1 `isSubtermOf` (unwrap' t2)
+                                | otherwise = t1 `isSubtermOf` (unwrapE t2)
+    t1 `isSubtermOf` t2 = t1 `isSubtermOf` (unwrapE t2)
 
 instance SubtermQueryable ContextTerm' where
     t1 `isSubtermOf` t2@(Covariable _) = case t1 of
@@ -184,6 +200,6 @@ instance SubtermQueryable ContextTerm' where
 
 instance SubtermQueryable CommandTerm where
     t1@(C t1') `isSubtermOf` t2 | t1' == t2 = True
-                                | otherwise = t1 `isSubtermOf` (unwrap' t2)
-    t1 `isSubtermOf` t2 = t1 `isSubtermOf` (unwrap' t2)
+                                | otherwise = t1 `isSubtermOf` (unwrapC t2)
+    t1 `isSubtermOf` t2 = t1 `isSubtermOf` (unwrapC t2)
 -}
