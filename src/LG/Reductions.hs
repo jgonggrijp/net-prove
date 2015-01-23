@@ -185,8 +185,8 @@ sift links = (p \\ s, p `intersect` s, s \\ p)
 -- Get the proof net that results when applying some proof transformation to a
 -- graph. The proof transformation must be instantiated with identifiers as they
 -- occur in the graph.
-transform' :: CompositionGraph -> ProofTransformation -> CompositionGraph
-transform' graph (old :⤳ new) =
+transform :: CompositionGraph -> ProofTransformation -> CompositionGraph
+transform graph (old :⤳ new) =
   let (oldHypotheses, oldInterior, oldConclusions) = sift old
       (newHypotheses, newInterior, newConclusions) = sift new
       orphans = oldInterior  \\ newInterior
@@ -197,9 +197,10 @@ transform' graph (old :⤳ new) =
 
 -- Get all possible proof nets after performing one of the generic
 -- transformations given
-transform :: CompositionGraph -> [ProofTransformation] -> [CompositionGraph]
-transform graph transformations =
+step :: [ProofTransformation] -> CompositionGraph -> [CompositionGraph]
+step transformations graph =
   let possibilities = concatMap (instancesIn graph) transformations
-  in map (transform' graph) possibilities
+      try           = map (transform graph)
+  in try possibilities
 
 --isTree
