@@ -169,8 +169,8 @@ reduce = Map.mapMaybe adjust where
 -- Get all the instances of a proof transformation rule (that is, the
 -- transformations with identifiers that correspond to those in the graph) that
 -- can be applied to a graph
-ruleInstances :: CompositionGraph -> ProofTransformation -> [ProofTransformation]
-ruleInstances g r@(p :⤳ _) = map (flip apply r) (partialUnify p g)
+instancesIn :: CompositionGraph -> ProofTransformation -> [ProofTransformation]
+instancesIn g r@(p :⤳ _) = map (flip apply r) (partialUnify p g)
 
 
 -- Partition the nodes of a set of links into those at the hypothesis end, those
@@ -185,8 +185,8 @@ sift links = (p \\ s, p `intersect` s, s \\ p)
 -- Get the proof net that results when applying some proof transformation to a
 -- graph. The proof transformation must be instantiated with identifiers as they
 -- occur in the graph.
-transform :: CompositionGraph -> ProofTransformation -> CompositionGraph
-transform graph (old :⤳ new) =
+transform' :: CompositionGraph -> ProofTransformation -> CompositionGraph
+transform' graph (old :⤳ new) =
   let (oldHypotheses, oldInterior, oldConclusions) = sift old
       (newHypotheses, newInterior, newConclusions) = sift new
       orphans = oldInterior  \\ newInterior
@@ -194,5 +194,12 @@ transform graph (old :⤳ new) =
       widow   = oldConclusions \\ newConclusions
   in reconnect widower widow $ kill orphans $ connect new $ disconnect old graph
 
+
+-- Get all possible proof nets after performing one of the generic
+-- transformations given
+transform :: CompositionGraph -> [ProofTransformation] -> [CompositionGraph]
+transform graph transformations =
+  let possibilities = concatMap (instancesIn graph) transformations
+  in map (transform' graph) possibilities
 
 --isTree
