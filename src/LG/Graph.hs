@@ -18,8 +18,8 @@ isMain (MainT  _) = True
 isMain (Active _) = False
 
 -- there should be at most one main formula in any given tentacle list
-findMain :: [Tentacle] -> Maybe Identifier
-findMain = listToMaybe . map referee . filter isMain
+findMain :: [Tentacle] -> Maybe Tentacle
+findMain = listToMaybe . filter isMain
 
 --           premises       succedents
 data Link = [Tentacle] :○: [Tentacle]  -- Tensor
@@ -27,15 +27,15 @@ data Link = [Tentacle] :○: [Tentacle]  -- Tensor
           |  Tentacle  :|:  Tentacle   -- Axioma
           deriving (Eq, Show)
 
-premises, succedents :: Link -> [Identifier]
-premises   (ts :○: _ ) = map referee ts
-premises   (ts :●: _ ) = map referee ts
-premises   (t  :|: _ ) = [referee t]
-succedents (_  :○: ts) = map referee ts
-succedents (_  :●: ts) = map referee ts
-succedents (_  :|: t ) = [referee t]
+premises, succedents :: Link -> [Tentacle]
+premises   (ts :○: _ ) = ts
+premises   (ts :●: _ ) = ts
+premises   (t  :|: _ ) = [t]
+succedents (_  :○: ts) = ts
+succedents (_  :●: ts) = ts
+succedents (_  :|: t ) = [t]
 
-mainFormula :: Link -> Maybe Identifier
+mainFormula :: Link -> Maybe Tentacle
 mainFormula (ts :○: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (ts :●: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (_  :|: _ ) = Nothing
