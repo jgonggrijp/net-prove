@@ -51,21 +51,35 @@ instance Wrappable CommandTerm where
     wrap t = C t
     unwrap (C t) = t
 
-class Wrappable' a where
-    unwrap' :: Wrappable b => b -> a
+class ValueWrappable a where
+    unwrapV :: ValueTerm -> a
+    
+instance ValueWrappable ValueTerm' where
+    unwrapV (V' t) = t
 
-instance Wrappable' ValueTerm' where
-    unwrap' (V' t) = t
-    unwrap' (t :⌈ _) = t
+instance ValueWrappable CommandTerm where
+    unwrapV (Mu _ t) = t
 
-instance Wrappable' ContextTerm' where
-    unwrap' (E' t) = t
-    unwrap' (_ :⌉ t) = t
+class ContextWrappable a where
+    unwrapE :: ContextTerm -> a
+    
+instance ContextWrappable ContextTerm' where
+    unwrapE (E' t) = t
 
-instance Wrappable' CommandTerm where
-    unwrap' (Mu t) = t
-    unwrap' (Comu t) = t
-    unwrap' (Cut _ _ _ t) = t
+instance ContextWrappable CommandTerm where
+    unwrapE (Comu _ t) = t
+
+class CommandWrappable a where
+    unwrapC :: CommandTerm -> a
+
+instance CommandWrappable ValueTerm' where
+    unwrapC (t :⌈ _) = t
+
+instance CommandWrappable ContextTerm' where
+    unwrapC (_ :⌉ t) = t
+
+instance CommandWrappable CommandTerm where
+    unwrapC (Cut _ _ _ t) = t
 
 class Substitutable a where
     substitute :: ValidSubstitution b => b -> b -> a -> a
@@ -76,7 +90,7 @@ class ValidSubstitution a where
     asContext  :: a -> Maybe ContextTerm
     asValue   _ = Nothing
     asContext _ = Nothing
-    asSubstitution :: NodeTerm -> a
+    asSubstitution :: (Wrappable a) => NodeTerm -> a
     asSubstitution = unwrap . fromNodeTerm
 
 instance ValidSubstitution ValueTerm where
@@ -125,6 +139,7 @@ instance Substitutable CommandTerm where
     substitute x y (z :⌈ s)      = substitute x y z :⌈ s
     substitute x y (s :⌉ z)      = s :⌉ substitute x y z
 
+{-
 class SubtermQueryable a where
     isSubtermOf :: Term -> a -> Bool
     inEitherBranch :: (SubtermQueryable b, SubtermQueryable c) => Term -> a -> b -> c -> Bool
@@ -171,3 +186,4 @@ instance SubtermQueryable CommandTerm where
     t1@(C t1') `isSubtermOf` t2 | t1' == t2 = True
                                 | otherwise = t1 `isSubtermOf` (unwrap' t2)
     t1 `isSubtermOf` t2 = t1 `isSubtermOf` (unwrap' t2)
+-}
