@@ -97,9 +97,8 @@ instance Unifiable ProofTransformation where
 -- Give all possible unifications for some set of links such that all the links
 -- occur in the given graph in conjunction.
 -- To find the unifications of the first link, we simply try to unify with all
--- links. This assumes that all links have at least one tentacle leading up.
--- When we have the first set of (tentatively) possible unifications, we expand
--- (or shrink) this set nondeterministically by attempting to unify all
+-- links. When we have the first set of (tentatively) possible unifications, we
+-- expand (or shrink) this set nondeterministically by attempting to unify all
 -- neighbour links (that is, all links that are connected to nodes that we've
 -- seen before). Note that this requires each next link to be in some way
 -- connected to one that came before! Although laziness helps us a lot here,
@@ -109,16 +108,25 @@ instance Unifiable ProofTransformation where
 partialUnify :: [Link] -> CompositionGraph -> [Unification]
 partialUnify []       _ = []
 partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
-  firsts link = Map.elems $ Map.mapMaybe (\n -> premiseOf n >>= unify' link) g
+  firsts l      = mapMaybe (unify' l) (links g)
   rest []     u = [u]
-  rest (l:ls) u = let nodes = map snd u
+  rest (l:ls) u = let nodes    = map snd u
                       all' ref = mapMaybe (ref . (g Map.!))
-                      links = all' premiseOf nodes ++ all' succedentOf nodes
-                  in  mapMaybe (\l' -> unify l l' u) links >>= rest ls
+                      options  = all' premiseOf nodes ++ all' succedentOf nodes
+                  in  mapMaybe (\l' -> unify l l' u) options >>= rest ls
 
 
 --------------------------------------------------------------------------------
 -- Net manipulation
+
+-- Get all links inside a graph. Assumes that all links have at least one
+-- tentacle leading up!
+links :: CompositionGraph -> [Link]
+links = Map.elems . Map.mapMaybeWithKey below where
+  first = fmap (head . premises) . premiseOf
+  below k n = if   first n == Just k
+              then premiseOf n
+              else Nothing
 
 
 -- Delete all given nodes from a graph. Mind any references in other links!
@@ -156,28 +164,30 @@ update r graph link = update' graph (premises link) (succedents link) where
 
 
 -- Collapse axiom links so that the composition graph may be interpreted
--- proof net directly.
-reduce :: CompositionGraph -> CompositionGraph
-reduce = Map.mapMaybe adjust where
-  adjust (Node f t Nothing (Just (_ :|: _))) = Nothing
-  adjust (Node f t (Just (_ :|: _)) Nothing) = Nothing
-  adjust (Node f t s                p)       = Just $ Node f t (del s) (del p)
-  del (Just (_ :|: _))                       = Nothing
-  del other                                  = other
+-- proof net directly. It is still represented as a compositiongraph because it
+-- holds all the necessary information, but the semantics don't correspond any-
+-- more. Perhaps change the data type?
+{-asProofnet :: CompositionGraph -> CompositionGraph
+asProofnet g = Map.foldWithKey collapse' g g where
+  collapse' k (Node _ _ _ (Just (i :|: _))) = tie k i . Map.delete k
+  collapse' _ _ = id
+  tie k i =
 
+--doesn't work lol stuff gets deleted that you're still looping over ok bye
+-}
 
 -- Get all the instances of a proof transformation rule (that is, the
 -- transformations with identifiers that correspond to those in the graph) that
 -- can be applied to a graph
 instancesIn :: CompositionGraph -> ProofTransformation -> [ProofTransformation]
-instancesIn g r@(p :⤳ _) = map (flip apply r) (partialUnify p g)
+instancesIn graph r@(old :⤳ _) = map (flip apply r) (partialUnify old graph)
 
 
 -- Partition the nodes of a set of links into those at the hypothesis end, those
 -- 'inside' the links structure and those at the conclusion end, respectively
 sift :: [Link] -> ([Identifier], [Identifier], [Identifier])
-sift links = (p \\ s, p `intersect` s, s \\ p)
-  where all' = flip concatMap links
+sift ls = (p \\ s, p `intersect` s, s \\ p)
+  where all' = flip concatMap ls
         p    = all' premises
         s    = all' succedents
 
@@ -197,10 +207,12 @@ transform graph (old :⤳ new) =
 
 -- Get all possible proof nets after performing one of the generic
 -- transformations given
+-- Using laziness, we can do "let (newGraph:_) = step contractions oldGraph"
 step :: [ProofTransformation] -> CompositionGraph -> [CompositionGraph]
 step transformations graph =
   let possibilities = concatMap (instancesIn graph) transformations
       try           = map (transform graph)
   in try possibilities
 
---isTree
+-- Cycle detection.
+--isTree :: CompositionGraph -> Bool
