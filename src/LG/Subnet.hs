@@ -24,12 +24,12 @@ fromNode (nodeID :@ nodeInfo) = Subnet onlyNodeID nodeTerm none none none
 
 -- merge first subnet into second, hooking the former's term into
 -- the given (co)variable of the latter's term
-merge :: ValidSubstitution a => Subnet -> Subnet -> a -> Subnet
+merge :: Subnet -> Subnet -> NodeTerm -> Subnet
 merge net1 net2 v = Subnet allNodes mergeTerm mergeCommand mergeCotensor mergeMu
   where (Subnet nodes1 term1 command1 cotensor1 mu1) = net1
         (Subnet nodes2 term2 command2 cotensor2 mu2) = net2
         allNodes = Set.union nodes1 nodes2
-        mergeTerm = substitute (unwrap term1) v term2
+        mergeTerm = substitute (unwrap term1) (asSubstitution v) term2
         mergeCommand = Set.union command1 command2
         mergeCotensor = Set.union cotensor1 cotensor2
         mergeMu = Set.union mu1 mu2
@@ -58,8 +58,8 @@ consumeLink net graph nodeID link@(_ :○: _)
              | otherwise             = expandTentacle' (fromNode o1) graph t1
         sub2 | nodeID == referee' t2 = net
              | otherwise             = expandTentacle' (fromNode o2) graph t2
-        linkNet' = merge sub1 linkNet $ asSubstitution $ term n1
-        linkNet'' = merge sub2 linkNet' $ asSubstitution $ term n2
+        linkNet' = merge sub1 linkNet $ term n1
+        linkNet'' = merge sub2 linkNet' $ term n2
 consumeLink _ graph nodeID link@(_ :●: _)
     | nodeID == referee' tMain = fromNode $ nodeID :@ nodeInfo
     | otherwise                = net'
@@ -73,18 +73,17 @@ consumeLink net graph nodeID link@(t1 :|: t2)
         [(Va _), (Ev _)] -> commandNet
         [(Ev _), (Va _)] -> muNet
         _                -> if sub2' `includes` sub2
-            then merge net sub2' term2'
-            else merge sub2' net term1'
+            then merge net sub2' term2
+            else merge sub2' net term1
     | nodeID == i2 = case terms of
         [(Va _), (Ev _)] -> commandNet'
         [(Ev _), (Va _)] -> comuNet
         _                -> if sub1' `includes` sub1
-            then merge net sub1' term1'
-            else merge sub1' net term2'
+            then merge net sub1' term1
+            else merge sub1' net term2
   where ids@[i1, i2] = fmap referee [t1, t2]
         infos@[n1, n2] = fmap (fromJust . flip Map.lookup graph) ids
         terms@[term1, term2] = fmap term infos
-        [term1', term2'] = fmap asSubstitution terms
         f1 = formula n1
         (Subnet is t cms cts mus) = net
         commandNet = case f1 of
@@ -112,4 +111,4 @@ expandNode :: Identifier -> Subnet -> CompositionGraph -> Link -> Subnet
 expandNode nodeID net graph link | net' `includes` net = net'
                                  | otherwise           = merge net' net var
   where net' = consumeLink net graph nodeID link
-        var = asSubstitution $ term $ fromJust $ Map.lookup nodeID graph
+        var = term $ fromJust $ Map.lookup nodeID graph
