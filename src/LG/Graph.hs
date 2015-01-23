@@ -7,7 +7,7 @@ import qualified Data.Map as Map
 import LG.Base
 import LG.Term
 
-data Tentacle = MainT Identifier | Active Identifier deriving (Eq, Show)
+data Tentacle = MainT Identifier | Active Identifier deriving (Eq, Ord, Show)
 
 referee :: Tentacle -> Identifier
 referee (MainT  i) = i
@@ -25,7 +25,7 @@ findMain = listToMaybe . filter isMain
 data Link = [Tentacle] :○: [Tentacle]  -- Tensor
           | [Tentacle] :●: [Tentacle]  -- Cotensor
           |  Tentacle  :|:  Tentacle   -- Axioma
-          deriving (Eq, Show)
+          deriving (Eq, Ord, Show)
 
 premises, succedents :: Link -> [Tentacle]
 premises   (ts :○: _ ) = ts

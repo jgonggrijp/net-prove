@@ -55,7 +55,7 @@ class Substitutable a where
     substitute :: ValidSubstitution b => b -> b -> a -> a
     --substitute x for y in z
 
-class ValidSubstitution a where
+class Wrappable a => ValidSubstitution a where
     asValue    :: a -> Maybe ValueTerm
     asContext  :: a -> Maybe ContextTerm
     asValue   _ = Nothing
@@ -68,6 +68,11 @@ instance ValidSubstitution ValueTerm where
 
 instance ValidSubstitution ContextTerm where
     asContext x = Just x
+
+instance Substitutable Term where
+    substitute x y (V z) = V $ substitute x y z
+    substitute x y (E z) = E $ substitute x y z
+    substitute x y (C z) = C $ substitute x y z
 
 instance Substitutable ValueTerm where
     -- the following matcher enables substitution of a mu binding
