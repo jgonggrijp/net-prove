@@ -51,36 +51,6 @@ instance Wrappable CommandTerm where
     wrap t = C t
     unwrap (C t) = t
 
-class ValueWrappable a where
-    unwrapV :: ValueTerm -> a
-    
-instance ValueWrappable ValueTerm' where
-    unwrapV (V' t) = t
-
-instance ValueWrappable CommandTerm where
-    unwrapV (Mu _ t) = t
-
-class ContextWrappable a where
-    unwrapE :: ContextTerm -> a
-    
-instance ContextWrappable ContextTerm' where
-    unwrapE (E' t) = t
-
-instance ContextWrappable CommandTerm where
-    unwrapE (Comu _ t) = t
-
-class CommandWrappable a where
-    unwrapC :: CommandTerm -> a
-
-instance CommandWrappable ValueTerm' where
-    unwrapC (t :⌈ _) = t
-
-instance CommandWrappable ContextTerm' where
-    unwrapC (_ :⌉ t) = t
-
-instance CommandWrappable CommandTerm where
-    unwrapC (Cut _ _ _ t) = t
-
 class Substitutable a where
     substitute :: ValidSubstitution b => b -> b -> a -> a
     --substitute x for y in z
@@ -154,52 +124,3 @@ t1 `isSubtermOf` t2 = t1 == t2 || case t2 of
     (C (t2' :⌈ _  )) -> t1 `isSubtermOf` (V (V' t2'))
     (C (_   :⌉ t2')) -> t1 `isSubtermOf` (E (E' t2'))
     (C (Cut _ _ _ t2')) -> t1 `isSubtermOf` (C t2')
-
-{-
-class SubtermQueryable a where
-    isSubtermOf :: Term -> a -> Bool
-    inEitherBranch :: (SubtermQueryable b, SubtermQueryable c) => Term -> a -> b -> c -> Bool
-    inEitherBranch' :: SubtermQueryable b => Term -> a -> b -> Bool
-    inEitherBranch' t1 t2 t3 = (t1 `isSubtermOf` t2) || (t1 `isSubtermOf` t3)
-
-instance SubtermQueryable Term where
-    t1 `isSubtermOf` t2 | t1 == t2  = True 
-                        | otherwise = t1 `isSubtermOf` (unwrap t2)
-
-instance SubtermQueryable ValueTerm where
-    t1@(V t1') `isSubtermOf` t2 | t1' == t2 = True
-                                | otherwise = t1 `isSubtermOf` (unwrapV t2)
-    t1 `isSubtermOf` t2 = t1 `isSubtermOf` (unwrapV t2)
-
-instance SubtermQueryable ValueTerm' where
-    t1 `isSubtermOf` t2@(Variable _) = case t1 of
-        (V (V' t1')) -> t1' == t2
-        otherwise    -> False
-    t1 `isSubtermOf` t2@(t2' :<×> t2'') = inEitherBranch t1 t2 t2' t2''
-    t1 `isSubtermOf` t2@(t2' :<\> t2'') = inEitherBranch t1 t2 t2' t2''
-    t1 `isSubtermOf` t2@(t2' :</> t2'') = inEitherBranch t1 t2 t2' t2''
-    inEitherBranch t1 t2 t2' t2'' = case t1 of
-        (V (V' t1')) -> if t1' == t2 then True else inEitherBranch' t1 t2' t2''
-        otherwise    -> inEitherBranch' t1 t2' t2''
-
-instance SubtermQueryable ContextTerm where
-    t1@(E t1') `isSubtermOf` t2 | t1' == t2 = True
-                                | otherwise = t1 `isSubtermOf` (unwrapE t2)
-    t1 `isSubtermOf` t2 = t1 `isSubtermOf` (unwrapE t2)
-
-instance SubtermQueryable ContextTerm' where
-    t1 `isSubtermOf` t2@(Covariable _) = case t1 of
-        (E (E' t1')) -> t1' == t2
-        otherwise    -> False
-    t1 `isSubtermOf` t2@(t2'  :\  t2'') = inEitherBranch t1 t2 t2' t2''
-    t1 `isSubtermOf` t2@(t2'  :/  t2'') = inEitherBranch t1 t2 t2' t2''
-    t1 `isSubtermOf` t2@(t2' :<+> t2'') = inEitherBranch t1 t2 t2' t2''
-    inEitherBranch t1 t2 t2' t2'' = case t1 of
-        (E (E' t1')) -> if t1' == t2 then True else inEitherBranch' t1 t2' t2''
-        otherwise    -> inEitherBranch' t1 t2' t2''
-
-instance SubtermQueryable CommandTerm where
-    t1@(C t1') `isSubtermOf` t2 | t1' == t2 = True
-                                | otherwise = t1 `isSubtermOf` (unwrapC t2)
-    t1 `isSubtermOf` t2 = t1 `isSubtermOf` (unwrapC t2)
--}
