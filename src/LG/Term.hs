@@ -112,15 +112,15 @@ instance Substitutable CommandTerm where
 isSubtermOf :: Term -> Term -> Bool
 t1 `isSubtermOf` t2 = t1 == t2 || case t2 of
     (V (V' (Variable _))) -> False
-    (V (V' (t2' :<×> t2''))) -> t1 `isSubtermOf` (V t2') || t1 `isSubtermOf` (V t2'')
-    (V (V' (t2' :<\> t2''))) -> t1 `isSubtermOf` (E t2') || t1 `isSubtermOf` (V t2'')
-    (V (V' (t2' :</> t2''))) -> t1 `isSubtermOf` (V t2') || t1 `isSubtermOf` (E t2'')
-    (V (Mu _ t2')) -> t1 `isSubtermOf` (C t2')
+    (V (V' (t3 :<×> t4))) -> t1 `isSubtermOf` (V t3) || t1 `isSubtermOf` (V t4)
+    (V (V' (t3 :<\> t4))) -> t1 `isSubtermOf` (E t3) || t1 `isSubtermOf` (V t4)
+    (V (V' (t3 :</> t4))) -> t1 `isSubtermOf` (V t3) || t1 `isSubtermOf` (E t4)
+    (V (Mu _ t3)) -> t1 `isSubtermOf` (C t3)
     (E (E' (Covariable _))) -> False
-    (E (E' (t2'  :\  t2''))) -> t1 `isSubtermOf` (V t2') || t1 `isSubtermOf` (E t2'')
-    (E (E' (t2'  :/  t2''))) -> t1 `isSubtermOf` (E t2') || t1 `isSubtermOf` (V t2'')
-    (E (E' (t2' :<+> t2''))) -> t1 `isSubtermOf` (E t2') || t1 `isSubtermOf` (E t2'')
-    (E (Comu _ t2')) -> t1 `isSubtermOf` (C t2')
-    (C (t2' :⌈ _  )) -> t1 `isSubtermOf` (V (V' t2'))
-    (C (_   :⌉ t2')) -> t1 `isSubtermOf` (E (E' t2'))
-    (C (Cut _ _ _ t2')) -> t1 `isSubtermOf` (C t2')
+    (E (E' (t3  :\  t4))) -> t1 `isSubtermOf` (V t3) || t1 `isSubtermOf` (E t4)
+    (E (E' (t3  :/  t4))) -> t1 `isSubtermOf` (E t3) || t1 `isSubtermOf` (V t4)
+    (E (E' (t3 :<+> t4))) -> t1 `isSubtermOf` (E t3) || t1 `isSubtermOf` (E t4)
+    (E (Comu _ t3)) -> t1 `isSubtermOf` (C t3)
+    (C (t3 :⌈ _  )) -> t1 `isSubtermOf` (V (V' t3))
+    (C (_   :⌉ t3)) -> t1 `isSubtermOf` (E (E' t3))
+    (C (Cut _ _ _ t3)) -> t1 `isSubtermOf` (C t3)
