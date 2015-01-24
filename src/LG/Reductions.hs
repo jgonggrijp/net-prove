@@ -117,43 +117,11 @@ partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
 
 
 --------------------------------------------------------------------------------
--- Net manipulation
-
--- Delete all given nodes from a graph. Mind any references in other links!
-kill :: [Identifier] -> CompositionGraph -> CompositionGraph
-kill = flip $ foldl' $ flip Map.delete
+-- Net information
 
 
--- Identify 'lost' hypotheses and conclusions with eachother. We assume that the
--- 'hypotheses' in the first list are not actually the premise of any link
--- anymore, and that the 'conclusions' are not the succedent of any link.
-reconnect :: [Identifier] -> [Identifier] -> CompositionGraph -> CompositionGraph
-reconnect []  []  g = g
-reconnect [h] [c] g = Map.delete h . uplink c (succedentOf $ g Map.! h) $ g
-reconnect _ _ _     = error "Cannot reconnect multiple disconnected hypotheses and conclusions. Make sure that the proof transformations are sensible."
-
------------- >>>>>>
--- Remove/add the succedentOf/premiseOf link references to the nodes of a graph
-connect, disconnect :: [Link] -> CompositionGraph -> CompositionGraph
-connect    = flip $ foldl' (update $ Just)
-disconnect = flip $ foldl' (update $ const Nothing)
-
--- Update all references to some (hypothetical) link that may exist in the
--- nodes of a graph to refer to some other link (or its absence)
-update :: (Link -> Maybe Link) -> CompositionGraph -> Link -> CompositionGraph
-update r graph link = update' graph (premises link) (succedents link) where
-  update' g' (k:ks) s = update' (downlink k (r link) g') ks s
-  update' g' p (k:ks) = update' (uplink   k (r link) g') p ks
-  update' g' _      _ = g'
------------- >>>>>>
-
--- Change to what link some node is a premise (downlink) / succedent (uplink)
-downlink, uplink :: Identifier -> Maybe Link -> CompositionGraph -> CompositionGraph
-downlink k new g = Map.adjust (\(Node f t _ s) -> Node f t new s) k g
-uplink   k new g = Map.adjust (\(Node f t p _) -> Node f t p new) k g
-
-
--- Get all links inside a graph. Assumes that all links have at least one
+-- Get all links inside a graph by enumerating all links under each node that is
+-- the first premise of a link. Assumes that all links have at least one
 -- tentacle leading up!
 links :: CompositionGraph -> [Link]
 links = Map.elems . Map.mapMaybeWithKey spotByRepresentative where
@@ -161,25 +129,59 @@ links = Map.elems . Map.mapMaybeWithKey spotByRepresentative where
   spotByRepresentative k n = if first n == Just k then premiseOf n else Nothing
 
 
+-- Find out to what link some node is a premise (downlink) / succedent (uplink)
+downlink, uplink :: Identifier -> CompositionGraph -> Maybe Link
+downlink k g = premiseOf   $ g Map.! k
+uplink   k g = succedentOf $ g Map.! k
+
+
+--------------------------------------------------------------------------------
+-- Net manipulation
+
+-- Delete all given nodes from a graph. Mind any other refs!
+kill :: [Identifier] -> CompositionGraph -> CompositionGraph
+kill = flip $ foldl' $ flip Map.delete
+
+
+-- Update the referred nodes using the given node transformer. Mind other refs!
+adjust :: (NodeInfo -> NodeInfo) ->
+          [Identifier] -> CompositionGraph -> CompositionGraph
+adjust f = flip $ foldl' $ flip $ Map.adjust f
+
+
+-- Change the link above or below a node
+(⤴) , (⤵) :: NodeInfo -> Maybe Link -> NodeInfo
+Node f t p _ ⤴ new = Node f t p new
+Node f t _ s ⤵ new = Node f t new s
+
+
+-- Remove/add the succedentOf/premiseOf link references to the nodes of a graph.
+-- Makes use of a helper function that simply updates all nodes that are
+-- referred to in some (hypothetical) link to either actually refer to such a
+-- link or to put Nothings in its place
+connect, disconnect :: [Link] -> CompositionGraph -> CompositionGraph
+connect          = install Just
+disconnect       = install (const Nothing)
+install presence = flip $ foldl' (\g l -> adjust (⤴ presence l) (succedents l) $
+                                          adjust (⤵ presence l) (premises l) g)
+
+-- Identify 'lost' hypotheses and conclusions with eachother. We assume that the
+-- 'hypotheses' in the first list are not actually the premise of any link
+-- anymore, and that the 'conclusions' are not the succedent of any link.
+reunite :: [Identifier] -> [Identifier] -> CompositionGraph -> CompositionGraph
+reunite []  []  g = g
+reunite [h] [c] g = Map.delete h . Map.adjust (⤴ uplink h g) c $ g
+reunite  _   _  _ = error "Cannot reconnect multiple disconnected hypotheses\
+      \and conclusions. Make sure that the proof transformations are sensible."
+
+
 -- Collapse axiom links so that the composition graph may be interpreted as a
 -- proof net directly. It is still represented as a compositiongraph because it
 -- holds all the necessary information, but the semantics don't correspond any-
 -- more. Perhaps change the data type?
--- This unfortunately looks like black magic but it just copies all the links
--- UNDER a (sequence of) axiom links to directly under the topmost axiom links,
--- after which it can safely removes all the others.
--- ... Except this doesn't actually update the links that are referenced in the
--- nodes below THAT link. Are we sure we chose a convenient data type?
 asProofnet :: CompositionGraph -> CompositionGraph
-asProofnet graph = kill axioms $ foldl' moveUp graph axioms where
-  axioms = mapMaybe lowerAxiom $ links graph
-  lowerAxiom (_ :|: bottom) = Just $ referee bottom
-  lowerAxiom _              = Nothing
-  upperAxiom (top :|: _)    = Just $ referee top
-  upperAxiom _              = Nothing
-  moveUp g' k = let n = g' Map.! k in case succedentOf n >>= upperAxiom of
-    Just j -> flip moveUp j $ downlink j (premiseOf n) g'
-    _      -> g'
+asProofnet = let collapseAxiom = [ Active 0  :|:  Active 1 ] :⤳ []
+             in  loop (listToMaybe . step' collapseAxiom)
 
 
 -- Get all the instances of a proof transformation rule (that is, the
@@ -208,16 +210,26 @@ transform graph (old :⤳ new) =
       orphans = oldInterior  \\ newInterior
       widower = oldHypotheses \\ newHypotheses
       widow   = oldConclusions \\ newConclusions
-  in reconnect widower widow $ kill orphans $ connect new $ disconnect old graph
+  in reunite widower widow $ kill orphans $ connect new $ disconnect old graph
 
 
--- Get all possible proof nets after performing one of the generic
+-- Get all possible proof nets after performing (one of) the generic
 -- transformations given
 -- Using laziness, we can do "let (newGraph:_) = step contractions oldGraph"
-step :: [ProofTransformation] -> CompositionGraph -> [CompositionGraph]
-step transformations graph =
+step  :: [ProofTransformation] -> CompositionGraph -> [CompositionGraph]
+step  transformations graph =
   let possibilities = concatMap (instancesIn graph) transformations
-  in map (transform graph) possibilities
+  in  map (transform graph) possibilities
+step' :: ProofTransformation -> CompositionGraph -> [CompositionGraph]
+step' transformation graph =
+  let possibilities = instancesIn graph transformation
+  in  map (transform graph) possibilities
+
+
+loop :: (a -> Maybe a) -> a -> a
+loop f start = case f start of
+  Just next -> loop f next
+  Nothing   -> start
 
 -- Cycle detection.
 --isTree :: CompositionGraph -> Bool
