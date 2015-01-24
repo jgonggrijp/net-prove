@@ -93,6 +93,12 @@ instance Unifiable ProofTransformation where
   apply u (p :⤳ s) = apply u p :⤳ apply u s
   unify (p1 :⤳ s1) (p2 :⤳ s2) u = unify s1 s2 u >>= unify p1 p2
 
+instance Unifiable a => Unifiable (Maybe a) where
+  apply u (Just x) = Just $ apply u x
+  unify (Just x) (Just y) u = unify x y u
+  unify Nothing  Nothing  u = Just u
+  unify _        _        _ = Nothing
+
 
 -- Give all possible unifications for some set of links such that all the links
 -- occur in the given graph in conjunction.
@@ -150,9 +156,9 @@ adjust f = flip $ foldl' $ flip $ Map.adjust f
 
 
 -- Change the link above or below a node
-(⤴) , (⤵) :: NodeInfo -> Maybe Link -> NodeInfo
-Node f t p _ ⤴ new = Node f t p new
-Node f t _ s ⤵ new = Node f t new s
+(⤴) , (⤵) :: Maybe Link -> NodeInfo -> NodeInfo
+new ⤴ Node f t p _ = Node f t p new
+new ⤵ Node f t _ s = Node f t new s
 
 
 -- Remove/add the succedentOf/premiseOf link references to the nodes of a graph.
@@ -162,18 +168,28 @@ Node f t _ s ⤵ new = Node f t new s
 connect, disconnect :: [Link] -> CompositionGraph -> CompositionGraph
 connect          = install Just
 disconnect       = install (const Nothing)
-install presence = flip $ foldl' (\g l -> adjust (⤴ presence l) (succedents l) $
-                                          adjust (⤵ presence l) (premises l) g)
+install presence = flip $ foldl' (\g l -> adjust (presence l ⤴) (succedents l)
+                                        $ adjust (presence l ⤵) (premises l) g)
+
 
 -- Identify 'lost' hypotheses and conclusions with eachother. We assume that the
 -- 'hypotheses' in the first list are not actually the premise of any link
 -- anymore, and that the 'conclusions' are not the succedent of any link.
 reunite :: [Identifier] -> [Identifier] -> CompositionGraph -> CompositionGraph
 reunite []  []  g = g
-reunite [h] [c] g = Map.delete h . Map.adjust (⤴ uplink h g) c $ g
-reunite  _   _  _ = error "Cannot reconnect multiple disconnected hypotheses\
+reunite [h] [c] g = Map.delete h . Map.adjust (l⤴) c . adjust (l⤵) upstream $ g
+  where l'        = uplink h g
+        l         = sub c h l'
+        upstream  = maybe [] premises l
+reunite _ _ _     = error "Cannot reconnect multiple disconnected hypotheses\
       \and conclusions. Make sure that the proof transformations are sensible."
 
+
+-- An inefficient but convenient way to substitute c for h in l
+sub :: Identifier -> Identifier -> Maybe Link -> Maybe Link
+sub c h l = flip apply l $ map sub' $ fromJust $ unify' l l where
+  sub' (k,v) |   k==h    = (k,c)
+             | otherwise = (k,v)
 
 -- Collapse axiom links so that the composition graph may be interpreted as a
 -- proof net directly. It is still represented as a compositiongraph because it
@@ -226,6 +242,7 @@ step' transformation graph =
   in  map (transform graph) possibilities
 
 
+-- Looping. The code is already clearer than any explanation can be.
 loop :: (a -> Maybe a) -> a -> a
 loop f start = case f start of
   Just next -> loop f next
