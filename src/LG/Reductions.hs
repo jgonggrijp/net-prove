@@ -138,7 +138,6 @@ connect, disconnect :: [Link] -> CompositionGraph -> CompositionGraph
 connect    = flip $ foldl' (update $ Just)
 disconnect = flip $ foldl' (update $ const Nothing)
 
-
 -- Update all references to some (hypothetical) link that may exist in the
 -- nodes of a graph to refer to some other link (or its absence)
 update :: (Link -> Maybe Link) -> CompositionGraph -> Link -> CompositionGraph
@@ -169,6 +168,8 @@ links = Map.elems . Map.mapMaybeWithKey spotByRepresentative where
 -- This unfortunately looks like black magic but it just copies all the links
 -- UNDER a (sequence of) axiom links to directly under the topmost axiom links,
 -- after which it can safely removes all the others.
+-- ... Except this doesn't actually update the links that are referenced in the
+-- nodes below THAT link. Are we sure we chose a convenient data type?
 asProofnet :: CompositionGraph -> CompositionGraph
 asProofnet graph = kill axioms $ foldl' moveUp graph axioms where
   axioms = mapMaybe lowerAxiom $ links graph
