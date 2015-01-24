@@ -37,6 +37,7 @@ z     = Variable "z"
 z'    = Variable "z'"
 alpha = Covariable "a"
 beta  = Covariable "b"
+beta' = Covariable "b'"
 gamma = Covariable "g"
 
 -- node and link descriptions
@@ -78,19 +79,26 @@ f6      = np_s_np
 t6      = Va tv
 c6d     = Active 6
 f7      = np_s_np
-t7      = Ev (E' (V' x :\ E' beta) :/ V' y)
+t7      = Ev (E' beta' :/ V' y)
 c7u     = Active 7
 c7d     = MainT 7
 k67     = c6d :|: c7u
 n6      = Node f6 t6 (Just k67) Nothing
 
+f8'     = np_s
+t8'     = Ev beta'
+c8'u    = Active 80
+c8'd    = Active 80
+k578    = [c7d, c5d] :○: [c8'u]
+n5      = Node f5 t5 (Just k578) (Just k45)
+n7      = Node f7 t7 (Just k578) (Just k67)
+
 f8      = np_s
 t8      = Ev (V' x :\ E' beta)
 c8u     = Active 8
 c8d     = MainT 8
-k578    = [c7d, c5d] :○: [c8u]
-n5      = Node f5 t5 (Just k578) (Just k45)
-n7      = Node f7 t7 (Just k578) (Just k67)
+k88'    = c8'd :|: c8u
+n8'     = Node f8' t8' (Just k88') (Just k578)
 
 f9      = s
 t9      = Ev beta
@@ -107,7 +115,7 @@ t11     = Va x
 c11d    = Active 11
 c11u    = Active 11
 k8911   = [c11d, c8d] :○: [c9u]
-n8      = Node f8 t8 (Just k8911) (Just k578)
+n8      = Node f8 t8 (Just k8911) (Just k88')
 n9      = Node f9 t9 (Just k910) (Just k8911)
 
 f12     = np
@@ -128,6 +136,13 @@ c14u    = Active 14
 k121314 = [c13d, c14d] :○: [c12u]
 n12     = Node f12 t12 (Just k1112) (Just k121314)
 
+f14'    = n
+t14'    = Va z
+c14'u   = Active 140
+c14'd   = Active 140
+k1414'  = c14'd :|: c14u
+n14     = Node f14 t14 (Just k121314) (Just k1414')
+
 f15     = np_n
 t15     = Va y'
 c15d    = Active 15
@@ -138,8 +153,8 @@ n13     = Node f13 t13 (Just k121314) (Just k1315)
 f16     = np_n_n
 t16     = Va subj
 c16d    = MainT 16
-k141516 = [c16d] :●: [c15u, c14u]
-n14     = Node f14 t14 (Just k121314) (Just k141516)
+k141516 = [c16d] :●: [c15u, c14'u]
+n14'    = Node f14' t14' (Just k1414') (Just k141516)
 n15     = Node f15 t15 (Just k1315) (Just k141516)
 n16     = Node f16 t16 (Just k141516) Nothing
 
@@ -153,12 +168,14 @@ testGraph = Map.fromList [ (1, n1)
                          , (6, n6)
                          , (7, n7)
                          , (8, n8)
+                         , (80, n8')
                          , (9, n9)
                          , (10, n10)
                          , (11, n11)
                          , (12, n12)
                          , (13, n13)
                          , (14, n14)
+                         , (140, n14')
                          , (15, n15)
                          , (16, n16)
                          ]
