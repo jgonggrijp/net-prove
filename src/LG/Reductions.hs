@@ -119,16 +119,6 @@ partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
 --------------------------------------------------------------------------------
 -- Net manipulation
 
--- Get all links inside a graph. Assumes that all links have at least one
--- tentacle leading up!
-links :: CompositionGraph -> [Link]
-links = Map.elems . Map.mapMaybeWithKey below where
-  first = fmap (head . premises) . premiseOf
-  below k n = if   first n == Just k
-              then premiseOf n
-              else Nothing
-
-
 -- Delete all given nodes from a graph. Mind any references in other links!
 kill :: [Identifier] -> CompositionGraph -> CompositionGraph
 kill = flip $ foldl' $ flip Map.delete
@@ -139,13 +129,10 @@ kill = flip $ foldl' $ flip Map.delete
 -- anymore, and that the 'conclusions' are not the succedent of any link.
 reconnect :: [Identifier] -> [Identifier] -> CompositionGraph -> CompositionGraph
 reconnect []  []  g = g
-reconnect [h] [c] g =
-  let up = succedentOf $ g Map.! h
-      g' = Map.adjust (\(Node f t down _) -> Node f t down up) c g
-        in Map.delete h g'
-reconnect _ _ _ = error "Cannot reconnect multiple disconnected hypotheses and conclusions. Make sure that the proof transformations are sensible."
+reconnect [h] [c] g = Map.delete h . uplink c (succedentOf $ g Map.! h) $ g
+reconnect _ _ _     = error "Cannot reconnect multiple disconnected hypotheses and conclusions. Make sure that the proof transformations are sensible."
 
-
+------------ >>>>>>
 -- Remove/add the succedentOf/premiseOf link references to the nodes of a graph
 connect, disconnect :: [Link] -> CompositionGraph -> CompositionGraph
 connect    = flip $ foldl' (update $ Just)
@@ -156,25 +143,51 @@ disconnect = flip $ foldl' (update $ const Nothing)
 -- nodes of a graph to refer to some other link (or its absence)
 update :: (Link -> Maybe Link) -> CompositionGraph -> Link -> CompositionGraph
 update r graph link = update' graph (premises link) (succedents link) where
-  updatePremise   (Node f t p s) = Node f t (r link) s
-  updateSuccedent (Node f t p s) = Node f t p (r link)
-  update' g' (k:ks) s = update' (Map.adjust updatePremise   k g') ks s
-  update' g' p (k:ks) = update' (Map.adjust updateSuccedent k g') p ks
+  update' g' (k:ks) s = update' (downlink k (r link) g') ks s
+  update' g' p (k:ks) = update' (uplink   k (r link) g') p ks
   update' g' _      _ = g'
+------------ >>>>>>
+
+-- Change to what link some node is a premise (downlink) / succedent (uplink)
+downlink, uplink :: Identifier -> Maybe Link -> CompositionGraph -> CompositionGraph
+downlink k new g = Map.adjust (\(Node f t _ s) -> Node f t new s) k g
+uplink   k new g = Map.adjust (\(Node f t p _) -> Node f t p new) k g
+
+
+-- Get all links inside a graph. Assumes that all links have at least one
+-- tentacle leading up!
+links :: CompositionGraph -> [Link]
+links = Map.elems . Map.mapMaybeWithKey spotByRepresentative where
+  first                    = fmap (head . premises) . premiseOf
+  spotByRepresentative k n = if first n == Just k then premiseOf n else Nothing
 
 
 -- Collapse axiom links so that the composition graph may be interpreted
 -- proof net directly. It is still represented as a compositiongraph because it
 -- holds all the necessary information, but the semantics don't correspond any-
 -- more. Perhaps change the data type?
-{-asProofnet :: CompositionGraph -> CompositionGraph
-asProofnet g = Map.foldWithKey collapse' g g where
-  collapse' k (Node _ _ _ (Just (i :|: _))) = tie k i . Map.delete k
-  collapse' _ _ = id
-  tie k i =
-
---doesn't work lol stuff gets deleted that you're still looping over ok bye
+-- This unfortunately looks like black magic but it just copies all the links
+-- UNDER a (sequence of) axiom links to directly under the topmost axiom links,
+-- after which it can safely removes all the others.
+{-
+asProofnet :: CompositionGraph -> CompositionGraph
+asProofnet graph = kill orphans $ relink where
+  (orphans, relink) = foldl' collapse' ([], graph) $ filter axiom $ links graph
+  collapse' (deletions, graph) (up :|: down) = ()
 -}
+
+asProofnet :: CompositionGraph -> CompositionGraph
+asProofnet graph = kill orphans $ elevated where
+  (orphans, elevated) = foldl' (flip moveUp) ([], graph) $ mapMaybe axiomBottom $ links graph
+  axiomBottom (_ :|: bottom) = Just $ referee bottom
+  axiomBottom _              = Nothing
+
+
+moveUp :: Identifier -> ([Identifier], CompositionGraph) -> ([Identifier], CompositionGraph)
+moveUp k (del, g) = let n = g Map.! k in case succedentOf n of
+  Just (j :|: _) -> moveUp (referee j) $ ((k:del), downlink (referee j) (premiseOf n) g)
+  _              -> (del, g)
+
 
 -- Get all the instances of a proof transformation rule (that is, the
 -- transformations with identifiers that correspond to those in the graph) that
@@ -211,8 +224,7 @@ transform graph (old :⤳ new) =
 step :: [ProofTransformation] -> CompositionGraph -> [CompositionGraph]
 step transformations graph =
   let possibilities = concatMap (instancesIn graph) transformations
-      try           = map (transform graph)
-  in try possibilities
+  in map (transform graph) possibilities
 
 -- Cycle detection.
 --isTree :: CompositionGraph -> Bool
