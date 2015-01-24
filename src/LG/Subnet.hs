@@ -29,7 +29,9 @@ merge net1 net2 v = Subnet allNodes mergeTerm mergeCommand mergeCotensor mergeMu
   where (Subnet nodes1 term1 command1 cotensor1 mu1) = net1
         (Subnet nodes2 term2 command2 cotensor2 mu2) = net2
         allNodes = Set.union nodes1 nodes2
-        mergeTerm = substitute (unwrap term1) (asSubstitution v) term2
+        mergeTerm = case (term1, v) of
+            ((V term1'), (Va v')) -> substitute term1' (V' v') term2
+            ((E term1'), (Ev v')) -> substitute term1' (E' v') term2
         mergeCommand = Set.union command1 command2
         mergeCotensor = Set.union cotensor1 cotensor2
         mergeMu = Set.union mu1 mu2
