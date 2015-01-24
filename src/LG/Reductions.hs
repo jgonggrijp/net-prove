@@ -162,31 +162,23 @@ links = Map.elems . Map.mapMaybeWithKey spotByRepresentative where
   spotByRepresentative k n = if first n == Just k then premiseOf n else Nothing
 
 
--- Collapse axiom links so that the composition graph may be interpreted
+-- Collapse axiom links so that the composition graph may be interpreted as a
 -- proof net directly. It is still represented as a compositiongraph because it
 -- holds all the necessary information, but the semantics don't correspond any-
 -- more. Perhaps change the data type?
 -- This unfortunately looks like black magic but it just copies all the links
 -- UNDER a (sequence of) axiom links to directly under the topmost axiom links,
 -- after which it can safely removes all the others.
-{-
 asProofnet :: CompositionGraph -> CompositionGraph
-asProofnet graph = kill orphans $ relink where
-  (orphans, relink) = foldl' collapse' ([], graph) $ filter axiom $ links graph
-  collapse' (deletions, graph) (up :|: down) = ()
--}
-
-asProofnet :: CompositionGraph -> CompositionGraph
-asProofnet graph = kill orphans $ elevated where
-  (orphans, elevated) = foldl' (flip moveUp) ([], graph) $ mapMaybe axiomBottom $ links graph
-  axiomBottom (_ :|: bottom) = Just $ referee bottom
-  axiomBottom _              = Nothing
-
-
-moveUp :: Identifier -> ([Identifier], CompositionGraph) -> ([Identifier], CompositionGraph)
-moveUp k (del, g) = let n = g Map.! k in case succedentOf n of
-  Just (j :|: _) -> moveUp (referee j) $ ((k:del), downlink (referee j) (premiseOf n) g)
-  _              -> (del, g)
+asProofnet graph = kill axioms $ foldl' moveUp graph axioms where
+  axioms = mapMaybe lowerAxiom $ links graph
+  lowerAxiom (_ :|: bottom) = Just $ referee bottom
+  lowerAxiom _              = Nothing
+  upperAxiom (top :|: _)    = Just $ referee top
+  upperAxiom _              = Nothing
+  moveUp g' k = let n = g' Map.! k in case succedentOf n >>= upperAxiom of
+    Just j -> flip moveUp j $ downlink j (premiseOf n) g'
+    _      -> g'
 
 
 -- Get all the instances of a proof transformation rule (that is, the
