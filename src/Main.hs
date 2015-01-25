@@ -9,24 +9,23 @@ import Data.List.Split
 import Data.Char
 
 main = do
-    (putStrLn . show) (proveSentence "John likes Mary")
+    (putStrLn . show) (getPossibleProofStructures "John likes Mary")
 
+proveSentence string = proofs
+  where proofStructures = getPossibleProofStructures string
+        proofs = proofStructures -- TODO filter out those structures that are not nets
 
-proveSentence string = g
+getPossibleProofStructures string = unfoldedGraph
   where words = ((wordsBy (not . isLetter)) string)
         hypotheses  = Lexicon.entries words
         conclusions = Lexicon.entries ["s"]
-        g = unfold hypotheses conclusions
+        unfoldedGraph = unfold hypotheses conclusions
+        proofStructures = ((map collapseAxiomLinks) . identifyNodes) unfoldedGraph
 
 -- Generates possible proof structures for "(a/b)/b", as in Figure 15 of M&M (2012)
 figure15 = g1
-  where (id, nodes, c) = unfoldHypothesis (Lexicon.lookup "figure15") 0
-        g1 = identifyNodes (insertNodes nodes Map.empty)
+  where g0 = unfold (Lexicon.entries ["figure15"]) []
+        g1 = identifyNodes g0
 
 -- Generates possible proof structures for "sub tv det noun |- s", as in Figure 18 of M&M (2012)
-figure18 = proofStructures
-  where graph = unfold (Lexicon.entries ["sub", "tv", "det", "noun"]) (Lexicon.entries ["s"])
-        -- Identify atomic nodes and collapse axiom links. We now have an array of proof structures which might or might not be proof nets.
-        proofStructures = ((map collapseAxiomLinks) . identifyNodes) graph
-
-
+figure18 = getPossibleProofStructures "sub tv det noun"
