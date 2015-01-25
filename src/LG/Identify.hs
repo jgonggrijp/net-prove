@@ -1,5 +1,6 @@
 module LG.Identify where
 import LG.Graph
+import Lexicon
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -108,13 +109,13 @@ collapseAxiomLinks g = collapseConclusionLinks (((map (\(Node _ _ _ l)->l)) . (f
                 replaceIdInConclusion' replaceMe withMe (id:xs) g0 = g1
                   where Just (Node f t premOf (Just link)) = Map.lookup id g0
                         g1 = Map.insert id newNode g0
-                        newNode = (Node f t premOf (Just (replaceId replaceMe withMe link)))
-                        replaceId :: Identifier -> Identifier -> Link -> Link
-                        replaceId replaceMe withMe (prems :○: concs) = (replace replaceMe withMe prems) :○: (replace replaceMe withMe concs)
-                        replaceId replaceMe withMe (prems :●: concs) = (replace replaceMe withMe prems) :○: (replace replaceMe withMe concs)
-                        replaceId replaceMe withMe (prem :|: conc) = p :|: c
+                        newNode = (Node f t premOf (Just (replaceInLink replaceMe withMe link)))
+                        replaceInLink :: Identifier -> Identifier -> Link -> Link
+                        replaceInLink replaceMe withMe (prems :○: concs) = (replaceInList replaceMe withMe prems) :○: (replaceInList replaceMe withMe concs)
+                        replaceInLink replaceMe withMe (prems :●: concs) = (replaceInList replaceMe withMe prems) :○: (replaceInList replaceMe withMe concs)
+                        replaceInLink replaceMe withMe (prem :|: conc) = p :|: c
                           where p = if replaceMe==(referee prem) then (Active withMe) else prem
                                 c = if replaceMe==(referee conc) then (Active withMe) else conc
-                        replace replaceMe withMe inList = map replaceIdInTentance inList
+                        replaceInList replaceMe withMe inList = map replaceIdInTentance inList
                         replaceIdInTentance t@(Active x) = if x==replaceMe then Active withMe else t
                         replaceIdInTentance t@(MainT x) = if x==replaceMe then MainT withMe else t

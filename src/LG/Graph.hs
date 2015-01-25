@@ -102,4 +102,8 @@ hypotheses = Map.keys . Map.filter (isNothing . succedentOf)
 conclusions :: CompositionGraph -> [Identifier]
 conclusions = Map.keys . Map.filter (isNothing . premiseOf)
 
--- unfoldHypothesis :: IO Int -> Identifier -> CompositionGraph
+-- Function that inserts nodes at given ids, overwriting any pre-existing mappings
+-- Complexity: O(m*(log (n+m))), for m is the number of nodes being added and n is the number of nodes in the graph
+insertNodes ::  [Occurrence NodeInfo] -> CompositionGraph -> CompositionGraph
+insertNodes [] graph = graph
+insertNodes ((id :@ formula):nodes) graph = insertNodes nodes (Map.insert id formula graph)
