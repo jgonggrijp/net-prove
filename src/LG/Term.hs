@@ -35,33 +35,15 @@ fromNodeTerm :: NodeTerm -> Term
 fromNodeTerm (Va t) = V (V' t)
 fromNodeTerm (Ev t) = E (E' t)
 
-class Wrappable a where
-    wrap :: a -> Term
-    unwrap :: Term -> a  -- take off one layer of value constructor
-
-instance Wrappable ValueTerm where
-    wrap t = V t
-    unwrap (V t) = t
-
-instance Wrappable ContextTerm where
-    wrap t = E t
-    unwrap (E t) = t
-
-instance Wrappable CommandTerm where
-    wrap t = C t
-    unwrap (C t) = t
-
 class Substitutable a where
     substitute :: ValidSubstitution b => b -> b -> a -> a
     --substitute x for y in z
 
-class Wrappable a => ValidSubstitution a where
+class ValidSubstitution a where
     asValue    :: a -> Maybe ValueTerm
     asContext  :: a -> Maybe ContextTerm
     asValue   _ = Nothing
     asContext _ = Nothing
-    asSubstitution :: (Wrappable a) => NodeTerm -> a
-    asSubstitution = unwrap . fromNodeTerm
 
 instance ValidSubstitution ValueTerm where
     asValue x = Just x
