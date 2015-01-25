@@ -61,8 +61,8 @@ class Unifiable a where
   unify' x y = unify x y []
 
 instance Unifiable Int where
-  apply u x   = fromJust $ lookup x u -- throws error if there is any identifier
-  unify x y u = case lookup x u of -- without translation. substitute wouldn't.
+  apply u x   = maybe x id $ lookup x u
+  unify x y u = case lookup x u of
     Nothing -> Just ((x, y) : u)
     Just y' -> if y == y' then Just u else Nothing
 
