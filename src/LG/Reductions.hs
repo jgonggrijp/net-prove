@@ -189,13 +189,14 @@ sub c h l = flip apply l $ map sub' $ fromJust $ unify' l l where
   sub' (k,v) |   k==h    = (k,c)
              | otherwise = (k,v)
 
+
 -- Collapse axiom links so that the composition graph may be interpreted as a
 -- proof net directly. It is still represented as a compositiongraph because it
 -- holds all the necessary information, but the semantics don't correspond any-
 -- more. Perhaps change the data type?
 asProofnet :: CompositionGraph -> CompositionGraph
 asProofnet = let collapseAxiom = [ Active 0  :|:  Active 1 ] :⤳ []
-             in  loop (listToMaybe . step' collapseAxiom)
+             in  loop (listToMaybe . step [collapseAxiom])
 
 
 -- Get all the instances of a proof transformation rule (that is, the
@@ -229,14 +230,9 @@ transform graph (old :⤳ new) =
 
 -- Get all possible proof nets after performing (one of) the generic
 -- transformations given
--- Using laziness, we can do "let (newGraph:_) = step contractions oldGraph"
 step  :: [ProofTransformation] -> CompositionGraph -> [CompositionGraph]
 step  transformations graph =
   let possibilities = concatMap (instancesIn graph) transformations
-  in  map (transform graph) possibilities
-step' :: ProofTransformation -> CompositionGraph -> [CompositionGraph]
-step' transformation graph =
-  let possibilities = instancesIn graph transformation
   in  map (transform graph) possibilities
 
 
@@ -247,6 +243,12 @@ loop f start = case f start of
   Nothing   -> start
 
 
+-- Is the composition graph a valid proof net?
+valid :: CompositionGraph -> Bool
+valid = isTree . loop greedy . asProofnet where
+  greedy = listToMaybe . step (contractions ++ interactions)
+
+
 -- Is our graph a tree? For now, we just disregard connectedness
 isTree :: CompositionGraph -> Bool
 isTree = not . cyclic
@@ -254,12 +256,12 @@ isTree = not . cyclic
 
 -- Naive (?) cycle detection
 cyclic :: CompositionGraph -> Bool
-cyclic g | Map.null g     = True
+cyclic g | Map.null g     = False
          | otherwise      = cyclic' up   [] [first] &&
                             cyclic' down [] [first] where
   first                   = head $ Map.keys g
   up k                    = maybe [] premises   $ uplink   k g
   down k                  = maybe [] succedents $ downlink k g
-  cyclic' xplr seen (x:q) | x `elem` seen = False
+  cyclic' xplr seen (x:q) | x `elem` seen = True
                           | otherwise     = cyclic' xplr (x:seen) (xplr x++q)
-  cyclic' _       _    [] = True
+  cyclic' _       _    [] = False
