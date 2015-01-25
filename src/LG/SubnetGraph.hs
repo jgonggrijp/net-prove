@@ -35,3 +35,39 @@ extractSubnets' index node progress | Set.member index visited = progress
         visited' = Set.union visited (nodes newsub)
         subsGraph' = Set.foldr (flip Map.insert newsub) subsGraph (nodes newsub)
         progress' = Progress graph visited' (newsub:subs) subsGraph'
+
+validExtensions :: SubnetGraph -> CompositionGraph -> Link -> Subnet -> [Subnet]
+validExtensions sgraph cgraph target net = case net of
+    (Subnet _ (C _) _ Set.empty _) -> muExtensions
+    (Subnet _ (C _) _ _         _) -> cotensorExtensions
+    _                              -> commandExtensions
+  where muExtensions = concatMap (extendMu net sgraph cgraph target) muL
+        cotensorExtensions = concatMap (extendCotensor net sgraph cgraph) cotL
+        commandExtensions = concatMap (extendCommand net sgraph cgraph) comL
+        muL = Set.toList $ muLinks net
+        cotL = Set.toList $ cotensorLinks net
+        comL = Set.toList $ commandLinks net
+
+extendMu :: Subnet -> SubnetGraph -> CompositionGraph -> Link -> Link -> [Subnet]
+extendMu net sgraph cgraph target link@(t1 :|: t2)
+    | link == target = finalMu
+    | otherwise      = validExtensions sgraph' cgraph target mergeNet
+  where (Subnet ourNodes (C commandTerm) coms cots mus) = net
+        (i1, i2) = (referee t1, referee t2)
+        (ourID, theirID) | Set.member i1 ourNodes = (i1, i2)
+                         | Set.member i2 ourNodes = (i2, i1)
+        ourVar = term $ Map.lookup ourID cgraph
+        theirVar = term $ Map.lookup theirID cgraph
+        theirNet = Map.lookup theirID sgraph
+        muTerm = case ourVar of
+            (Va (Variable v)) -> E $ Comu v commandTerm
+            (Ev (Covariable v)) -> V $ Mu v commandTerm
+        mus' = Set.delete link mus
+        ourNet = Subnet ourNodes muTerm coms cots mus'
+        mergeNet = merge ourNet theirNet theirVar
+        update i s | Set.member i (nodes ourNet) = mergeNet
+                   | Set.member i (nodes theirNet) = mergeNet
+                   | otherwise = s
+        sgraph' = Map.mapWithKey update sgraph
+        finalMu | Set.null mus' = [mergeNet]
+                | otherwise     = []
