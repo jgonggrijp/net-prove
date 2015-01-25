@@ -178,12 +178,10 @@ install presence = flip $ foldl' (\g l -> adjust (presence l ⤴) (succedents l)
 reunite :: [Identifier] -> [Identifier] -> CompositionGraph -> CompositionGraph
 reunite []  []  g = g
 reunite [h] [c] g = Map.delete h . Map.adjust (l⤴) c . adjust (l⤵) upstream $ g
-  where l'        = uplink h g
-        l         = sub c h l'
+  where l         = sub c h $ uplink h g
         upstream  = maybe [] premises l
 reunite _ _ _     = error "Cannot reconnect multiple disconnected hypotheses\
       \and conclusions. Make sure that the proof transformations are sensible."
-
 
 -- An inefficient but convenient way to substitute c for h in l
 sub :: Identifier -> Identifier -> Maybe Link -> Maybe Link
@@ -248,5 +246,20 @@ loop f start = case f start of
   Just next -> loop f next
   Nothing   -> start
 
--- Cycle detection.
---isTree :: CompositionGraph -> Bool
+
+-- Is our graph a tree? For now, we just disregard connectedness
+isTree :: CompositionGraph -> Bool
+isTree = not . cyclic
+
+
+-- Naive (?) cycle detection
+cyclic :: CompositionGraph -> Bool
+cyclic g | Map.null g     = True
+         | otherwise      = cyclic' up   [] [first] &&
+                            cyclic' down [] [first] where
+  first                   = head $ Map.keys g
+  up k                    = maybe [] premises   $ uplink   k g
+  down k                  = maybe [] succedents $ downlink k g
+  cyclic' xplr seen (x:q) | x `elem` seen = False
+                          | otherwise     = cyclic' xplr (x:seen) (xplr x++q)
+  cyclic' _       _    [] = True
