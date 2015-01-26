@@ -108,6 +108,14 @@ t1 `isSubtermOf` t2 = t1 == t2 || case t2 of
     (E (E' (t3  :/  t4))) -> t1 `isSubtermOf` (E t3) || t1 `isSubtermOf` (V t4)
     (E (E' (t3 :<+> t4))) -> t1 `isSubtermOf` (E t3) || t1 `isSubtermOf` (E t4)
     (E (Comu _ t3)) -> t1 `isSubtermOf` (C t3)
-    (C (t3 :⌈ _  )) -> t1 `isSubtermOf` (V (V' t3))
-    (C (_   :⌉ t3)) -> t1 `isSubtermOf` (E (E' t3))
-    (C (Cut _ _ _ t3)) -> t1 `isSubtermOf` (C t3)
+    (C (t3 :⌈ n )) -> case t1 of
+        (E (E' (Covariable n'))) -> n == n' || t1 `isSubtermOf` (V (V' t3))
+        _                        ->            t1 `isSubtermOf` (V (V' t3))
+    (C (n  :⌉ t3)) -> case t1 of
+        (V (V' (Variable n'))) -> n == n' || t1 `isSubtermOf` (E (E' t3))
+        _                      ->            t1 `isSubtermOf` (E (E' t3))
+    (C (Cut _ _ n t3)) -> case t1 of
+        (V (V' (Variable   n'))) -> n == n' || t1 `isSubtermOf` (C t3)
+        (E (E' (Covariable n'))) -> n == n' || t1 `isSubtermOf` (C t3)
+        _                        ->            t1 `isSubtermOf` (C t3)
+        -- (slightly too permissive)
