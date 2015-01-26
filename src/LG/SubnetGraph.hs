@@ -1,6 +1,7 @@
 module LG.SubnetGraph where
 
 import Data.Maybe
+import Data.Tuple (swap)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -38,12 +39,12 @@ extractSubnets' index node progress | Set.member index visited = progress
 
 validExtensions :: SubnetGraph -> CompositionGraph -> Link -> Subnet -> [Subnet]
 validExtensions sgraph cgraph target net = case net of
-    (Subnet _ (C _) _ Set.empty _) -> muExtensions
-    (Subnet _ (C _) _ _         _) -> cotensorExtensions
-    _                              -> commandExtensions
+    (Subnet _ (C _) _ cots _) -> if Set.null cots then muExtensions
+                                                  else cotensorExtensions
+    _                         -> commandExtensions
   where muExtensions = concatMap (extendMu net sgraph cgraph target) muL
-        cotensorExtensions = concatMap (extendCotensor net sgraph cgraph) cotL
-        commandExtensions = concatMap (extendCommand net sgraph cgraph) comL
+        cotensorExtensions = concatMap (extendCotensor net sgraph cgraph target) cotL
+        commandExtensions = concatMap (extendCommand net sgraph cgraph target) comL
         muL = Set.toList $ muLinks net
         cotL = Set.toList $ cotensorLinks net
         comL = Set.toList $ commandLinks net
@@ -56,9 +57,9 @@ extendMu net sgraph cgraph target link@(t1 :|: t2)
         (i1, i2) = (referee t1, referee t2)
         (ourID, theirID) | Set.member i1 ourNodes = (i1, i2)
                          | Set.member i2 ourNodes = (i2, i1)
-        ourVar = term $ Map.lookup ourID cgraph
-        theirVar = term $ Map.lookup theirID cgraph
-        theirNet = Map.lookup theirID sgraph
+        ourVar = term $ fromJust $ Map.lookup ourID cgraph
+        theirVar = term $ fromJust $ Map.lookup theirID cgraph
+        theirNet = fromJust $ Map.lookup theirID sgraph
         muTerm = case ourVar of
             (Va (Variable v)) -> E $ Comu v commandTerm
             (Ev (Covariable v)) -> V $ Mu v commandTerm
@@ -78,10 +79,10 @@ extendCommand net sgraph cgraph target link@(t1 :|: t2) = extensions
         (i1, i2) = (referee t1, referee t2)
         (ourID, theirID) | Set.member i1 ourNodes = (i1, i2)
                          | Set.member i2 ourNodes = (i2, i1)
-        theirVar = term $ Map.lookup theirID cgraph
+        theirVar = term $ fromJust $ Map.lookup theirID cgraph
         commandTerm = case (theirVar, ourTerm) of
-            (Va (Variable v), E t) -> C $ v :⌉ t
-            (Ev (Covariable v), V t) -> C $ t :⌈ v
+            (Va (Variable   v), E (E' t)) -> C $ v :⌉ t
+            (Ev (Covariable v), V (V' t)) -> C $ t :⌈ v
         coms' = Set.delete link coms
         mergeNodes = Set.insert theirID ourNodes
         mergeNet = Subnet mergeNodes commandTerm coms' cots mus
@@ -97,24 +98,26 @@ extendCotensor net sgraph cgraph target link | bothActiveIncluded = extensions
         (Subnet ourNodes ourTerm@(C commandTerm) coms cots mus) = net
         (im, i1, i2) = (referee' tm, referee' t1, referee' t2)
         bothActiveIncluded = Set.member i1 ourNodes && Set.member i2 ourNodes
-        termOfHead = term $ flip Map.lookup cgraph $ referee $ head
+        termOfHead = term . fromJust . flip Map.lookup cgraph . referee . head
         representative t
-            | v@(term $ Map.lookup (referee' t) cgraph) `isSubtermOf` ourTerm = v
+            | fromNodeTerm v `isSubtermOf` ourTerm = v
             | otherwise = case t of
-                (Prem i) -> termOfHead $ premises $ fromJust $ succedentOf $ Map.lookup i cgraph
-                (Succ i) -> termOfHead $ succedents $ fromJust $ premiseOf $ Map.lookup i cgraph
+                (Prem i) -> termOfHead $ premises $ fromJust $ succedentOf $ node i
+                (Succ i) -> termOfHead $ succedents $ fromJust $ premiseOf $ node i
+          where v = term $ fromJust $ Map.lookup (referee' t) cgraph
+                node = fromJust . flip Map.lookup cgraph
         extractName (Va (Variable v)) = v
         extractName (Ev (Covariable v)) = v
         name = extractName . representative
-        ns = (name t1, name t2)
+        names = (name t1, name t2)
         (n1, n2) = case link of
-            ([MainT _] :●: [Active _, Active _]) -> ns
-            ([Active _] :●: [MainT _, Active _]) -> ns
-            ([Active _] :●: [Active _, MainT _]) -> swap ns
-            ([MainT _, Active _] :●: [Active _]) -> swap ns
-            ([Active _, MainT _] :●: [Active _]) -> ns
-            ([Active _, Active _] :●: [MainT _]) -> ns
-        nm = extractName $ term $ Map.lookup im cgraph
+            ([MainT _] :●: [Active _, Active _]) -> names
+            ([Active _] :●: [MainT _, Active _]) -> names
+            ([Active _] :●: [Active _, MainT _]) -> swap names
+            ([MainT _, Active _] :●: [Active _]) -> swap names
+            ([Active _, MainT _] :●: [Active _]) -> names
+            ([Active _, Active _] :●: [MainT _]) -> names
+        nm = extractName $ term $ fromJust $ Map.lookup im cgraph
         mergeNodes = Set.insert im ourNodes
         mergeTerm = C $ Cut n1 n2 nm commandTerm
         cots' = Set.delete link cots
