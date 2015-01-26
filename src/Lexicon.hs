@@ -1,5 +1,6 @@
 module Lexicon where
-    import LG.Graph
+    import LG.Base
+    import LG.Term
 
     data Entry = LexEntry {
       term    :: NodeTerm,

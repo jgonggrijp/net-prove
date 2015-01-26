@@ -1,4 +1,6 @@
 module LG.Unfold where
+import LG.Base
+import LG.Term
 import LG.Graph
 import qualified Lexicon as Lexicon
 import qualified Data.Map as Map

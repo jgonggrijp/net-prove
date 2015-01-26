@@ -1,4 +1,6 @@
 module LG.Identify where
+import LG.Base
+import LG.Term
 import LG.Graph
 import Lexicon
 import qualified Data.Map as Map

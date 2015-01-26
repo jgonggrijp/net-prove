@@ -1,5 +1,6 @@
 module LG.Reductions where
 
+import LG.Base
 import LG.Graph
 import qualified Data.Map as Map
 import Data.List
