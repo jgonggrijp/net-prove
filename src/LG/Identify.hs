@@ -2,16 +2,10 @@ module LG.Identify where
 import LG.Base
 import LG.Term
 import LG.Graph
-import Lexicon
+import LG.Base
+import LG.Term
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-
--- Generates all subsets of a given list
-subsets :: [a] -> [[a]]
-subsets [] = [[]]
-subsets (x:xs) = (map (x:) y) ++ y
-  where
-    y = subsets xs
 
 -- identifyNodes is used to identify atomic nodes in a composition graph in a maximal way, that is: all possible combinations are tried out, exhaustively.
 -- See M&M, p. 7: "We obtain a proof structure of (s </> s) <\> np ⇒ s / (np \ s) by identifying atomic formulas"
@@ -44,6 +38,12 @@ identifyNodes g0 = map ((createGraph g0).Set.toList) compatibleSubsets
         createGraph g [] = g
         createGraph g (pair:ns) = createGraph g' ns
           where g' = (graphAfterIdentification pair g)
+
+-- Generates all subsets of a given list
+subsets :: [a] -> [[a]]
+subsets [] = [[]]
+subsets (x:xs) = (map (x:) y) ++ y
+  where y = subsets xs
 
 -- Completes an identification: id1 and id2 are removed from the graph, and linkMe1 and linkMe2 get a new axioma link:
 --
@@ -95,6 +95,7 @@ collapseAxiomLinks :: CompositionGraph -> CompositionGraph
 collapseAxiomLinks g = collapseConclusionLinks (((map (\(Node _ _ _ l)->l)) . (filter isAxiomConclusion) . Map.elems) g) g
   where isAxiomConclusion (Node _ _ _ (Just (_ :|: _))) = True
         isAxiomConclusion _ = False
+        collapseConclusionLinks :: [Maybe Link] -> CompositionGraph -> CompositionGraph
         collapseConclusionLinks [] g = g
         collapseConclusionLinks (Just (Active id1 :|: Active id2):xs) g0 = if sameTermTypes t1 t2 then g1 else g
           where Just (Node f1 t1 premOf1 concOf1) = Map.lookup id1 g0
@@ -105,8 +106,9 @@ collapseAxiomLinks g = collapseConclusionLinks (((map (\(Node _ _ _ l)->l)) . (f
                 sameTermTypes _ _ = False
                 g1 :: CompositionGraph
                 g1 = ((replaceIdInConclusion id2 id1 premOf2) . (Map.insert id1 newNode) . (Map.delete id2) . (Map.delete id1)) g0
+                replaceIdInConclusion :: Identifier -> Identifier -> Maybe Link -> CompositionGraph -> CompositionGraph
                 replaceIdInConclusion _ _ Nothing g = g
-                replaceIdInConclusion replaceMe withMe (Just l) g = replaceIdInConclusion' replaceMe withMe (succedents l) g
+                replaceIdInConclusion replaceMe withMe (Just l) g = replaceIdInConclusion' replaceMe withMe (map referee (succedents l)) g
                 replaceIdInConclusion' replaceMe withMe [] g = g
                 replaceIdInConclusion' replaceMe withMe (id:xs) g0 = g1
                   where Just (Node f t premOf (Just link)) = Map.lookup id g0
@@ -121,3 +123,4 @@ collapseAxiomLinks g = collapseConclusionLinks (((map (\(Node _ _ _ l)->l)) . (f
                         replaceInList replaceMe withMe inList = map replaceIdInTentance inList
                         replaceIdInTentance t@(Active x) = if x==replaceMe then Active withMe else t
                         replaceIdInTentance t@(MainT x) = if x==replaceMe then MainT withMe else t
+

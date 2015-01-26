@@ -2,6 +2,8 @@ module LG.Unfold where
 import LG.Base
 import LG.Term
 import LG.Graph
+import LG.Term
+import LG.Base
 import qualified Lexicon as Lexicon
 import qualified Data.Map as Map
 
