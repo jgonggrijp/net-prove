@@ -126,3 +126,8 @@ extendCotensor net sgraph cgraph target link | bothActiveIncluded = extensions
                    | otherwise = s
         sgraph' = Map.mapWithKey update sgraph
         extensions = validExtensions sgraph' cgraph target mergeNet
+
+termsFromProofnet :: CompositionGraph -> Link -> [Term]
+termsFromProofnet cgraph target = map sterm extensions
+  where (nets, sgraph) = extractSubnets cgraph
+        extensions = concatMap (validExtensions sgraph cgraph target) nets
