@@ -27,6 +27,10 @@ data Link = [Tentacle] :○: [Tentacle]  -- Tensor
           |  Tentacle  :|:  Tentacle   -- Axioma
           deriving (Eq, Ord, Show)
 
+prem, conc :: Link -> [Identifier]
+prem = map referee . premises
+conc = map referee . succedents
+
 premises, succedents :: Link -> [Tentacle]
 premises   (ts :○: _ ) = ts
 premises   (ts :●: _ ) = ts

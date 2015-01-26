@@ -61,6 +61,11 @@ class Unifiable a where
   unify' :: a -> a -> Maybe Unification
   unify' x y = unify x y []
 
+instance Unifiable a => Unifiable (Occurrence a) where
+  apply u (k :@ x)          = k :@ apply u x
+  unify (k :@ x) (i :@ y) u | k == i    = unify x y u
+                            | otherwise = Nothing
+
 instance Unifiable Int where
   apply u x   = maybe x id $ lookup x u
   unify x y u = case lookup x u of
@@ -132,7 +137,7 @@ partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
 -- tentacle leading up!
 links :: CompositionGraph -> [Link]
 links = Map.elems . Map.mapMaybeWithKey spotByRepresentative where
-  first                    = fmap (head . premises) . premiseOf
+  first                    = fmap (head . prem) . premiseOf
   spotByRepresentative k n = if first n == Just k then premiseOf n else Nothing
 
 
@@ -169,8 +174,8 @@ new ⤵ Node f t _ s = Node f t new s
 connect, disconnect :: [Link] -> CompositionGraph -> CompositionGraph
 connect          = install Just
 disconnect       = install (const Nothing)
-install presence = flip $ foldl' (\g l -> adjust (presence l ⤴) (succedents l)
-                                        $ adjust (presence l ⤵) (premises l) g)
+install presence = flip $ foldl' (\g l -> adjust (presence l ⤴) (conc l)
+                                        $ adjust (presence l ⤵) (prem l) g)
 
 
 -- Identify 'lost' hypotheses and conclusions with eachother. We assume that the
@@ -180,7 +185,7 @@ reunite :: [Identifier] -> [Identifier] -> CompositionGraph -> CompositionGraph
 reunite []  []  g = g
 reunite [h] [c] g = Map.delete h . Map.adjust (l⤴) c . adjust (l⤵) upstream $ g
   where l         = sub c h $ uplink h g
-        upstream  = maybe [] premises l
+        upstream  = maybe [] prem l
 reunite _ _ _     = error "Cannot reconnect multiple disconnected hypotheses\
       \and conclusions. Make sure that the proof transformations are sensible."
 
@@ -212,8 +217,8 @@ instancesIn graph r@(old :⤳ _) = map (flip apply r) (partialUnify old graph)
 sift :: [Link] -> ([Identifier], [Identifier], [Identifier])
 sift ls = (p \\ s, p `intersect` s, s \\ p)
   where all' = flip concatMap ls
-        p    = all' premises
-        s    = all' succedents
+        p    = all' prem
+        s    = all' conc
 
 
 -- Get the proof net that results when applying some proof transformation to a
@@ -261,8 +266,8 @@ cyclic g | Map.null g     = False
          | otherwise      = cyclic' up   [] [first] &&
                             cyclic' down [] [first] where
   first                   = head $ Map.keys g
-  up k                    = maybe [] premises   $ uplink   k g
-  down k                  = maybe [] succedents $ downlink k g
+  up k                    = maybe [] prem $ uplink   k g
+  down k                  = maybe [] conc $ downlink k g
   cyclic' xplr seen (x:q) | x `elem` seen = True
                           | otherwise     = cyclic' xplr (x:seen) (xplr x++q)
   cyclic' _       _    [] = False
