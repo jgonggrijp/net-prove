@@ -65,10 +65,11 @@ extendMu net sgraph cgraph target link@(t1 :|: t2)
         mus' = Set.delete link mus
         ourNet = Subnet ourNodes muTerm coms cots mus'
         mergeNet = merge ourNet theirNet theirVar
-        update i s | Set.member i (nodes mergeNet) = mergeNet
+        mergeNodes = nodes mergeNet
+        update i s | Set.member i mergeNodes = mergeNet
                    | otherwise = s
         sgraph' = Map.mapWithKey update sgraph
-        finalMu | Set.null mus' = [mergeNet]
+        finalMu | Set.null mus' && (Set.size mergeNodes == Map.size cgraph) = [mergeNet]
                 | otherwise     = []
 
 extendCommand :: Subnet -> SubnetGraph -> CompositionGraph -> Link -> Link -> [Subnet]
