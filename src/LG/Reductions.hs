@@ -61,11 +61,6 @@ class Unifiable a where
   unify' :: a -> a -> Maybe Unification
   unify' x y = unify x y []
 
-instance Unifiable a => Unifiable (Occurrence a) where
-  apply u (k :@ x)          = k :@ apply u x
-  unify (k :@ x) (i :@ y) u | k == i    = unify x y u
-                            | otherwise = Nothing
-
 instance Unifiable Int where
   apply u x   = maybe x id $ lookup x u
   unify x y u = case lookup x u of
@@ -77,6 +72,17 @@ instance Unifiable a => Unifiable [a] where
   unify (x:xs) (y:ys) u = unify x y u >>= unify xs ys
   unify []     []     u = Just u
   unify _      _      _ = Nothing
+
+instance Unifiable a => Unifiable (Maybe a) where
+  apply u (Just x) = Just $ apply u x
+  unify (Just x) (Just y) u = unify x y u
+  unify Nothing  Nothing  u = Just u
+  unify _        _        _ = Nothing
+
+instance Unifiable a => Unifiable (Occurrence a) where
+  apply u (k :@ x)          = k :@ apply u x
+  unify (k :@ x) (i :@ y) u | k == i    = unify x y u
+                            | otherwise = Nothing
 
 instance Unifiable Tentacle where
   apply u (MainT  x)          = MainT  $ apply u x
@@ -99,11 +105,13 @@ instance Unifiable ProofTransformation where
   apply u (p :⤳ s) = apply u p :⤳ apply u s
   unify (p1 :⤳ s1) (p2 :⤳ s2) u = unify s1 s2 u >>= unify p1 p2
 
-instance Unifiable a => Unifiable (Maybe a) where
-  apply u (Just x) = Just $ apply u x
-  unify (Just x) (Just y) u = unify x y u
-  unify Nothing  Nothing  u = Just u
-  unify _        _        _ = Nothing
+
+-- An inefficient but convenient way to substitute y by x in z, by exploiting
+-- the way unifications work
+subst :: Unifiable a => Identifier -> Identifier -> a -> a
+subst x y z = flip apply z $ map sub' $ fromJust $ unify' z z where
+  sub' (k,v) |   k==y    = (k,x)
+             | otherwise = (k,v)
 
 
 -- Give all possible unifications for some set of links such that all the links
@@ -129,54 +137,7 @@ partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
 
 
 --------------------------------------------------------------------------------
--- Net information
-
-
--- Get all links inside a graph by enumerating all links under each node that is
--- the first premise of a link. Assumes that all links have at least one
--- tentacle leading up!
-links :: CompositionGraph -> [Link]
-links = Map.elems . Map.mapMaybeWithKey spotByRepresentative where
-  first                    = fmap (head . prem) . premiseOf
-  spotByRepresentative k n = if first n == Just k then premiseOf n else Nothing
-
-
--- Find out to what link some node is a premise (downlink) / succedent (uplink)
-downlink, uplink :: Identifier -> CompositionGraph -> Maybe Link
-downlink k g = premiseOf   $ g Map.! k
-uplink   k g = succedentOf $ g Map.! k
-
-
---------------------------------------------------------------------------------
 -- Net manipulation
-
--- Delete all given nodes from a graph. Mind any other refs!
-kill :: [Identifier] -> CompositionGraph -> CompositionGraph
-kill = flip $ foldl' $ flip Map.delete
-
-
--- Update the referred nodes using the given node transformer. Mind other refs!
-adjust :: (NodeInfo -> NodeInfo) ->
-          [Identifier] -> CompositionGraph -> CompositionGraph
-adjust f = flip $ foldl' $ flip $ Map.adjust f
-
-
--- Change the link above or below a node
-(⤴) , (⤵) :: Maybe Link -> NodeInfo -> NodeInfo
-new ⤴ Node f t p _ = Node f t p new
-new ⤵ Node f t _ s = Node f t new s
-
-
--- Remove/add the succedentOf/premiseOf link references to the nodes of a graph.
--- Makes use of a helper function that simply updates all nodes that are
--- referred to in some (hypothetical) link to either actually refer to such a
--- link or to put Nothings in its place
-connect, disconnect :: [Link] -> CompositionGraph -> CompositionGraph
-connect          = install Just
-disconnect       = install (const Nothing)
-install presence = flip $ foldl' (\g l -> adjust (presence l ⤴) (conc l)
-                                        $ adjust (presence l ⤵) (prem l) g)
-
 
 -- Identify 'lost' hypotheses and conclusions with eachother. We assume that the
 -- 'hypotheses' in the first list are not actually the premise of any link
@@ -184,16 +145,10 @@ install presence = flip $ foldl' (\g l -> adjust (presence l ⤴) (conc l)
 reunite :: [Identifier] -> [Identifier] -> CompositionGraph -> CompositionGraph
 reunite []  []  g = g
 reunite [h] [c] g = Map.delete h . Map.adjust (l⤴) c . adjust (l⤵) upstream $ g
-  where l         = sub c h $ uplink h g
+  where l         = subst c h $ uplink h g
         upstream  = maybe [] prem l
 reunite _ _ _     = error "Cannot reconnect multiple disconnected hypotheses\
       \and conclusions. Make sure that the proof transformations are sensible."
-
--- An inefficient but convenient way to substitute c for h in l
-sub :: Identifier -> Identifier -> Maybe Link -> Maybe Link
-sub c h l = flip apply l $ map sub' $ fromJust $ unify' l l where
-  sub' (k,v) |   k==h    = (k,c)
-             | otherwise = (k,v)
 
 
 -- Collapse axiom links so that the composition graph may be interpreted as a
@@ -210,15 +165,6 @@ asProofnet = let collapseAxiom = [ Active 0  :|:  Active 1 ] :⤳ []
 -- can be applied to a graph
 instancesIn :: CompositionGraph -> ProofTransformation -> [ProofTransformation]
 instancesIn graph r@(old :⤳ _) = map (flip apply r) (partialUnify old graph)
-
-
--- Partition the nodes of a set of links into those at the hypothesis end, those
--- 'inside' the links structure and those at the conclusion end, respectively
-sift :: [Link] -> ([Identifier], [Identifier], [Identifier])
-sift ls = (p \\ s, p `intersect` s, s \\ p)
-  where all' = flip concatMap ls
-        p    = all' prem
-        s    = all' conc
 
 
 -- Get the proof net that results when applying some proof transformation to a
@@ -253,21 +199,3 @@ loop f start = case f start of
 valid :: CompositionGraph -> Bool
 valid = isTree . loop greedy . asProofnet where
   greedy = listToMaybe . step (contractions ++ interactions)
-
-
--- Is our graph a tree? For now, we just disregard connectedness
-isTree :: CompositionGraph -> Bool
-isTree = not . cyclic
-
-
--- Naive (?) cycle detection
-cyclic :: CompositionGraph -> Bool
-cyclic g | Map.null g     = False
-         | otherwise      = cyclic' up   [] [first] &&
-                            cyclic' down [] [first] where
-  first                   = head $ Map.keys g
-  up k                    = maybe [] prem $ uplink   k g
-  down k                  = maybe [] conc $ downlink k g
-  cyclic' xplr seen (x:q) | x `elem` seen = True
-                          | otherwise     = cyclic' xplr (x:seen) (xplr x++q)
-  cyclic' _       _    [] = False
