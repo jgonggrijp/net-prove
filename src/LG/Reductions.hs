@@ -184,8 +184,7 @@ transform graph (old :⤳ new) =
   in reunite widower widow $ kill orphans $ connect new $ disconnect old graph
 
 
--- Get all possible proof nets after performing (one of) the generic
--- transformations given
+-- Get all possible proof nets after performing each generic transformation
 step :: [ProofTransformation] -> CompositionGraph -> [CompositionGraph]
 step transformations graph =
   let possibilities = concatMap (instancesIn graph) transformations
@@ -193,12 +192,13 @@ step transformations graph =
 
 
 -- Get all possible proof nets, keep track of rule application history (inverse)
-stepTrace :: [(ProofTransformation, String)] -> (CompositionGraph, [String])
+stepTrace :: [(ProofTransformation, String)]
+          ->  (CompositionGraph, [String])
           -> [(CompositionGraph, [String])]
 stepTrace transformations (graph, history) =
   let results      = map (transform graph) . instancesIn graph
       try (t, log) = zip (results t) $ zipWith counter [1..] (repeat log)
-      counter i s  = (:history) $ (s ++ " (" ++ show i ++ ")")
+      counter i s  = (:history) $ s ++ " (" ++ show i ++ ")"
   in  concatMap try transformations
 
 
@@ -221,14 +221,11 @@ loopTrace f start = (start : case f start of
   Just next -> loopTrace f next
   Nothing   -> [])
 
-{-
--- Nondeterministic looping while keeping a trace of intermediate results
--- Earlier results are at the back of the list
-loopNondeterministic :: (a -> [a]) -> a -> [[a]]
-loopNondeterministic f start = concatMap (loopND f) [[start]] where
-  loopND f (prev:history) = map (++ history) $ f prev --uh
--}
 
-{-
-
--}
+-- Nondeterministic looping, allowing exploration of every branch of calculation
+-- and arriving at the end results each time that the calculation returns an
+-- empty list
+loopNondeterministic :: (a -> [a]) -> a -> [a]
+loopNondeterministic f init = case f init of
+  [] -> [init]
+  xs -> xs >>= loopNondeterministic f
