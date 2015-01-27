@@ -2,14 +2,37 @@ module Main where
 import LG.Graph
 import LG.Unfold
 import LG.Identify
+import LG.Reductions
+import LG.TestGraph
 import qualified Lexicon as Lexicon
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.List.Split
 import Data.Char
+import Data.Maybe
+import Data.List
 
+main :: IO ()
+main = let r = reductions rules testGraph
+       in if length r > 0
+          then putStrLn $ showReduction $ head r
+          else putStrLn $ "Does not reduce to a tree."
+
+
+line :: String
+line = "\n------------------\n"
+
+showReduction :: (CompositionGraph, [String]) -> String
+showReduction (pn, history) = line ++ recount ++ show (Proofnet pn) ++ line ++ "\n\n"
+  where recount = "Proof net found by application of the following rules:\n  initial -> "
+                ++ intercalate " -> " (reverse history) ++ "\n\n"
+
+
+
+{-
 main = do
     (putStrLn . show) (getPossibleProofStructures "John likes Mary")
+-}
 
 proveSentence string = proofs
   where proofStructures = getPossibleProofStructures string

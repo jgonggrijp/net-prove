@@ -86,12 +86,17 @@ instance Unifiable a => Unifiable (Occurrence a) where
   unify (k :@ x) (i :@ y) u | k == i    = unify x y u
                             | otherwise = Nothing
 
+-- Active tentacles may unify with main tentacles, but not the other way around.
+-- This way, whenever the main tentacle is irrelevant in a link, we may just
+-- unify using a link with all active tentacles; and when it *is* relevant, we
+-- use a main tentacle to enforce the presence of a main tentacle in the link
+-- that is subject to unification.
 instance Unifiable Tentacle where
   apply u (MainT  x)          = MainT  $ apply u x
   apply u (Active x)          = Active $ apply u x
   unify (MainT  x) (MainT  y) = unify x y
   unify (Active x) (Active y) = unify x y
-  unify (Active x) (MainT  y) = unify x y -- Quickfix because the example graph has main tentacles even though figure 12 doesn't. Is this expected behaviour?
+  unify (Active x) (MainT  y) = unify x y
   unify _          _          = const Nothing
 
 instance Unifiable Link where
@@ -232,7 +237,7 @@ loopTrace f start = (start : case f start of
 
 
 -- Nondeterministic looping, allowing exploration of every branch of calculation
--- and arriving at the end results each time that the calculation returns an
+-- and arriving at some end result every time that the calculation returns an
 -- empty list
 loopNondeterministic :: (a -> [a]) -> a -> [a]
 loopNondeterministic f init = case f init of
