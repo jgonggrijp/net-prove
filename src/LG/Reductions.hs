@@ -74,7 +74,7 @@ instance Unifiable a => Unifiable [a] where
   unify _      _      _ = Nothing
 
 instance Unifiable a => Unifiable (Maybe a) where
-  apply u (Just x) = Just $ apply u x
+  apply u = (>>= Just . apply u)
   unify (Just x) (Just y) u = unify x y u
   unify Nothing  Nothing  u = Just u
   unify _        _        _ = Nothing

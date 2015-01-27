@@ -23,20 +23,20 @@ data NegativeFormula = AtomN Name
                      deriving (Eq)
 
 instance Show a => Show (Occurrence a) where
-  show (k :@ a) = show k ++ "@ " ++ show a
+  show (k :@ a) = show k ++ "@" ++ show a
 
 instance Show Formula where
   show (P f) = show f
   show (N f) = show f
 
 instance Show PositiveFormula where
-  show (AtomP   f) = show f ++ "⁺"
-  show (f :<×>: e) = "(" ++ show f ++ "❨×❩"  ++ show e ++ ")"
-  show (f :<\>: e) = "(" ++ show f ++ "❨\\❩" ++ show e ++ ")"
-  show (f :</>: e) = "(" ++ show f ++ "❨/❩"  ++ show e ++ ")"
+  show (AtomP   f) = f ++ "⁺"
+  show (f :<×>: e) = "(" ++ show f ++ " <×> "  ++ show e ++ ")"
+  show (f :<\>: e) = "(" ++ show f ++ " <\\> " ++ show e ++ ")"
+  show (f :</>: e) = "(" ++ show f ++ " </> "  ++ show e ++ ")"
 
 instance Show NegativeFormula where
-  show (AtomN   f) = show f ++ "⁻"
-  show (f :<+>: e) = "(" ++ show f ++ "❨+❩" ++ show e ++ ")"
-  show (f  :\:  e) = "(" ++ show f ++  "\\" ++ show e ++ ")"
-  show (f  :/:  e) = "(" ++ show f ++  "/"  ++ show e ++ ")"
+  show (AtomN   f) = f ++ "⁻"
+  show (f :<+>: e) = "(" ++ show f ++ " <+> " ++ show e ++ ")"
+  show (f  :\:  e) = "(" ++ show f ++  " \\ " ++ show e ++ ")"
+  show (f  :/:  e) = "(" ++ show f ++  " / "  ++ show e ++ ")"

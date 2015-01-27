@@ -198,7 +198,7 @@ showTentacles :: CompositionGraph -> Link -> (Int, String, String)
 showTentacles g link = (width, top', bottom') where
   top'    = show'' $ prem link
   bottom' = show'' $ conc link
-  width   = max (length top') (length bottom') + 2
+  width   = max (length top') (length bottom') + 5
   show''  = intercalate "   " . map (\k -> show $ (k :@) $ formula $ g Map.! k)
 
 showLink :: CompositionGraph -> Link -> String
@@ -210,6 +210,9 @@ showLink g l@([a, b] :●: [c]) = let (w, top, bottom) = showTentacles g l
   in layout w [top, [arlup a, ' ', arrup b], "●", [arsdn c], bottom]
 showLink g l@([a] :●: [b, c]) = let (w, top, bottom) = showTentacles g l
   in layout w [top, [arsup a], "●", [arldn b, ' ', arrdn c], bottom]
+showLink g l@(a :|: b) = let (w, top, bottom) = showTentacles g l
+  in layout w [top, "|", "|", bottom]
+showLink _ l = show l
 
 arsup,arlup,arrup,arsdn,arldn,arrdn :: Tentacle -> Char
 arsup (MainT  _) = '↑'
