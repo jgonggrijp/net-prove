@@ -14,9 +14,6 @@ contraction              = (:⤳ [])
 interaction              = ([[ Active 1, Active 2 ] :○: [ Active 0 ],
                              [ Active 0 ] :○: [ Active 3, Active 4 ]] :⤳)
 
-contractions = [ rdivR, prodL, ldivR, rdifL, cprdR, ldifL ]
-interactions = [ g1, g3, g2, g4 ]
-
 rdivR = contraction [[ Active 1, Active 2 ] :○: [ Active 3 ], -- R/
                      [ Active 3 ] :●: [ MainT  4, Active 2 ]]
 
@@ -46,6 +43,11 @@ g2    = interaction [[ Active 1 ] :○: [ Active 0, Active 4 ], -- Commutativity
 
 g4    = interaction [[ Active 2 ] :○: [ Active 3, Active 0 ], -- Commutativity
                      [ Active 1, Active 0 ] :○: [ Active 4 ]]
+
+rules = [(rdivR,   "R/"), (prodL, "L<×>"), (ldivR,   "R\\"),
+         (rdifL, "L</>"), (cprdR, "R<+>"), (ldifL, "L<\\>"),
+         (g1, "associativity G1"), (g3, "associativity G3"),
+         (g2, "commutativity G2"), (g4, "commutativity G4")]
 
 
 --------------------------------------------------------------------------------
@@ -184,16 +186,25 @@ transform graph (old :⤳ new) =
 
 -- Get all possible proof nets after performing (one of) the generic
 -- transformations given
-step  :: [ProofTransformation] -> CompositionGraph -> [CompositionGraph]
-step  transformations graph =
+step :: [ProofTransformation] -> CompositionGraph -> [CompositionGraph]
+step transformations graph =
   let possibilities = concatMap (instancesIn graph) transformations
   in  map (transform graph) possibilities
+
+
+-- Get all possible proof nets, keep track of rule application history (inverse)
+stepTrace :: [(ProofTransformation, String)] -> (CompositionGraph, [String])
+          -> [(CompositionGraph, [String])]
+stepTrace transformations (graph, history) =
+  let results      = map (transform graph) . instancesIn graph
+      try (t, log) = zip (results t) (repeat (log:history))
+  in  concatMap try transformations
 
 
 -- Is the composition graph a valid proof net?
 valid :: CompositionGraph -> Bool
 valid = isTree . loop greedy . asProofnet where
-  greedy = listToMaybe . step (contractions ++ interactions)
+  greedy = listToMaybe . step (map fst rules)
 
 
 -- Looping. The code is already clearer than any explanation can be
@@ -208,3 +219,15 @@ loopTrace :: (a -> Maybe a) -> a -> [a]
 loopTrace f start = (start : case f start of
   Just next -> loopTrace f next
   Nothing   -> [])
+
+{-
+-- Nondeterministic looping while keeping a trace of intermediate results
+-- Earlier results are at the back of the list
+loopNondeterministic :: (a -> [a]) -> a -> [[a]]
+loopNondeterministic f start = concatMap (loopND f) [[start]] where
+  loopND f (prev:history) = map (++ history) $ f prev --uh
+-}
+
+{-
+
+-}
