@@ -91,6 +91,7 @@ instance Unifiable Tentacle where
   apply u (Active x)          = Active $ apply u x
   unify (MainT  x) (MainT  y) = unify x y
   unify (Active x) (Active y) = unify x y
+  unify (Active x) (MainT  y) = unify x y -- Quickfix because the example graph has main tentacles even though figure 12 doesn't. Is this expected behaviour?
   unify _          _          = const Nothing
 
 instance Unifiable Link where
