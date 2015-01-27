@@ -23,7 +23,7 @@ data NegativeFormula = AtomN Name
                      deriving (Eq)
 
 instance Show a => Show (Occurrence a) where
-  show (k :@ a) = show k ++ "@" ++ show a
+  show (k :@ a) = show k ++ " @ " ++ show a
 
 instance Show Formula where
   show (P f) = show f

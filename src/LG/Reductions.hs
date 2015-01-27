@@ -74,7 +74,7 @@ instance Unifiable a => Unifiable [a] where
   unify _      _      _ = Nothing
 
 instance Unifiable a => Unifiable (Maybe a) where
-  apply u = (>>= Just . apply u)
+  apply                     = fmap . apply
   unify (Just x) (Just y) u = unify x y u
   unify Nothing  Nothing  u = Just u
   unify _        _        _ = Nothing
@@ -144,9 +144,11 @@ partialUnify (l1:ls1) g = firsts l1 >>= rest ls1 where
 -- anymore, and that the 'conclusions' are not the succedent of any link.
 reunite :: [Identifier] -> [Identifier] -> CompositionGraph -> CompositionGraph
 reunite []  []  g = g
-reunite [h] [c] g = Map.delete h . Map.adjust (l⤴) c . adjust (l⤵) upstream $ g
+reunite [h] [c] g = Map.delete h . Map.adjust (l⤴) c
+                  . adjust (l⤵) upstream . adjust (l⤴) neighbour $ g
   where l         = subst c h $ uplink h g
         upstream  = maybe [] prem l
+        neighbour = maybe [] conc l
 reunite _ _ _     = error "Cannot reconnect multiple disconnected hypotheses\
       \and conclusions. Make sure that the proof transformations are sensible."
 
@@ -194,6 +196,13 @@ loop f start = case f start of
   Just next -> loop f next
   Nothing   -> start
 
+-- Looping while keeping a list of intermediate results.
+loopTracked :: (a -> Maybe a) -> a -> [a]
+loopTracked f start = (start : case f start of
+  Just next -> loopTracked f next
+  Nothing   -> [])
+-- Nondeterministic loop
+-- Tracked loop
 
 -- Is the composition graph a valid proof net?
 valid :: CompositionGraph -> Bool
