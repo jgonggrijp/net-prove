@@ -197,7 +197,8 @@ stepTrace :: [(ProofTransformation, String)] -> (CompositionGraph, [String])
           -> [(CompositionGraph, [String])]
 stepTrace transformations (graph, history) =
   let results      = map (transform graph) . instancesIn graph
-      try (t, log) = zip (results t) (repeat (log:history))
+      try (t, log) = zip (results t) $ zipWith counter [1..] (repeat log)
+      counter i s  = (:history) $ (s ++ " (" ++ show i ++ ")")
   in  concatMap try transformations
 
 
