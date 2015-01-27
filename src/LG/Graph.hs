@@ -189,17 +189,23 @@ instance Show Proofnet where
 layout :: Int -> [String] -> String
 layout width = intercalate "\n" . map (center width)
 
-center :: Int -> String -> String
-center n s = let m   = (n - length s) `div` 2
-                 pad = take m $ repeat ' '
-             in take n $ pad ++ s ++ repeat ' '
+pad, center :: Int -> String -> String
+center n s = let m = (n - length s) `div` 2
+                 p = take m $ repeat ' '
+             in take n $ p ++ s ++ repeat ' '
+
+pad n s = let m = (n - length s)
+          in take m $ repeat ' '
 
 showTentacles :: CompositionGraph -> Link -> (Int, String, String)
 showTentacles g link = (width, top', bottom') where
-  top'    = show'' $ prem link
-  bottom' = show'' $ conc link
-  width   = max (length top') (length bottom') + 5
-  show''  = intercalate "   " . map (\k -> show $ (k :@) $ formula $ g Map.! k)
+  top'          = showNs $ nodes $ prem link
+  bottom'       = showNs $ nodes $ conc link
+  width         = max (length top') (length bottom') + 2
+  nodes         = map (\k -> show $ (k :@) $ formula $ g Map.! k)
+  showNs (x:xs) = let n = maximum $ map length (x:xs)
+                  in intercalate "   " $ ((pad n x ++ x):map (\x -> x ++ pad n x) xs)
+
 
 showLink :: CompositionGraph -> Link -> String
 showLink g l@([a, b] :○: [c]) = let (w, top, bottom) = showTentacles g l
@@ -211,7 +217,7 @@ showLink g l@([a, b] :●: [c]) = let (w, top, bottom) = showTentacles g l
 showLink g l@([a] :●: [b, c]) = let (w, top, bottom) = showTentacles g l
   in layout w [top, [arsup a], "●", [arldn b, ' ', arrdn c], bottom]
 showLink g l@(a :|: b) = let (w, top, bottom) = showTentacles g l
-  in layout w [top, "|", "|", bottom]
+  in layout w [top, "|", "|", "|", bottom]
 showLink _ l = show l
 
 arsup,arlup,arrup,arsdn,arldn,arrdn :: Tentacle -> Char

@@ -190,21 +190,21 @@ step  transformations graph =
   in  map (transform graph) possibilities
 
 
--- Looping. The code is already clearer than any explanation can be.
+-- Is the composition graph a valid proof net?
+valid :: CompositionGraph -> Bool
+valid = isTree . loop greedy . asProofnet where
+  greedy = listToMaybe . step (contractions ++ interactions)
+
+
+-- Looping. The code is already clearer than any explanation can be
 loop :: (a -> Maybe a) -> a -> a
 loop f start = case f start of
   Just next -> loop f next
   Nothing   -> start
 
--- Looping while keeping a list of intermediate results.
-loopTracked :: (a -> Maybe a) -> a -> [a]
-loopTracked f start = (start : case f start of
-  Just next -> loopTracked f next
-  Nothing   -> [])
--- Nondeterministic loop
--- Tracked loop
 
--- Is the composition graph a valid proof net?
-valid :: CompositionGraph -> Bool
-valid = isTree . loop greedy . asProofnet where
-  greedy = listToMaybe . step (contractions ++ interactions)
+-- Looping while keeping a list of intermediate results
+loopTrace :: (a -> Maybe a) -> a -> [a]
+loopTrace f start = (start : case f start of
+  Just next -> loopTrace f next
+  Nothing   -> [])
