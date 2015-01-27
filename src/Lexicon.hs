@@ -49,4 +49,9 @@ module Lexicon where
     lookup "det"   = Just $ LexEntry (va "det")   det
     lookup "noun"  = Just $ LexEntry (va "noun")  nP
 
+    lookup "every"   = Just $ LexEntry (va "every")   (N $ (N $ sN :/: (N $ npP :\: sN)) :/: nP)
+    lookup "barber"  = Just $ LexEntry (va "barber")  nP
+    lookup "shaves"  = Just $ LexEntry (va "shaves")  (N $ npP :\: (N $ sN :/: npP))
+    lookup "himself" = Just $ LexEntry (va "himself") (N $ (N $ (N $ npP :\: sN) :/: npP) :\: (N $ npP :\: sN))
+
     lookup _ = Nothing
