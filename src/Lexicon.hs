@@ -1,6 +1,7 @@
 module Lexicon where
     import LG.Base
     import LG.Term
+    import Data.Maybe
 
     data Entry = LexEntry {
       term    :: NodeTerm,
@@ -8,8 +9,13 @@ module Lexicon where
     }
 
     -- Returns the lexical entries to which the given strings map. We assume for simplicity that one word maps to at most one lexical entry.
-    entries :: [String] -> [Entry]
-    entries words = (map Lexicon.lookup) words
+    entries :: [String] -> Maybe [Entry]
+    entries []     = Just []
+    entries (x:xs) = case Lexicon.lookup x of
+      Just x' -> entries xs >>= Just . (x':)
+      Nothing -> Nothing
+
+--    entries xs >>= (Lexicon.lookup x:)
 
     -- Some often used formulae
     npP   = P (AtomP "np")
@@ -25,20 +31,22 @@ module Lexicon where
     ev name = Ev (Covariable name)
 
     -- Example lexicon
-    lookup "Mary"  = LexEntry (va "m")     npP
-    lookup "likes" = LexEntry (va "likes") tv
-    lookup "John"  = LexEntry (va "j")     npP
-    lookup "the"   = LexEntry (va "the")   det
-    lookup "horse" = LexEntry (va "horse") nP
+    lookup "Mary"  = Just $ LexEntry (va "m")     npP
+    lookup "likes" = Just $ LexEntry (va "likes") tv
+    lookup "John"  = Just $ LexEntry (va "j")     npP
+    lookup "the"   = Just $ LexEntry (va "the")   det
+    lookup "horse" = Just $ LexEntry (va "horse") nP
 
-    lookup "s"     = LexEntry (ev "s")     sN
+    lookup "s"     = Just $ LexEntry (ev "s")     sN
 
     -- Fig 15
-    lookup "figure15" =  LexEntry (va "f")  f
+    lookup "figure15" =  Just $ LexEntry (va "f")  f
       where f = P( N ( P (AtomP "a"):/:P (AtomP "b")):<×>: (P (AtomP "b")))
 
     -- Fig 18
-    lookup "sub"   = LexEntry (va "sub")   sub
-    lookup "tv"    = LexEntry (va "tv")    tv
-    lookup "det"   = LexEntry (va "det")   det
-    lookup "noun"  = LexEntry (va "noun")  nP
+    lookup "sub"   = Just $ LexEntry (va "sub")   sub
+    lookup "tv"    = Just $ LexEntry (va "tv")    tv
+    lookup "det"   = Just $ LexEntry (va "det")   det
+    lookup "noun"  = Just $ LexEntry (va "noun")  nP
+
+    lookup _ = Nothing
