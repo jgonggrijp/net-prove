@@ -52,7 +52,7 @@ stage2 gs = do
 stage3 :: [CompositionGraph] -> IO ()
 stage3 gs = do
   putStrLn "The associated term(s) are:"
-  putStrLn $ show $ map (termsFromProofnet g) ls
+  mapM_ print $ concatMap (termsFromProofnet g) ls
   where g  = head gs
         ls = links g
 
