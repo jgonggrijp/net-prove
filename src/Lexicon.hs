@@ -23,7 +23,7 @@ module Lexicon where
     sP    = P (AtomP "s")
     sN    = N (AtomN "s")
     det   = N (npP :/: nP)
-    tv    = N (N (npP :\: sP) :/: npP)
+    tv    = N (N (npP :\: sN) :/: npP)
     sub   = P ((N (npP:/:nP)):<×>: nP)
 
     -- Utility functions for creating atomic terms
