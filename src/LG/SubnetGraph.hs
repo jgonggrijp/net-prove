@@ -131,3 +131,22 @@ termsFromProofnet :: CompositionGraph -> Link -> [Term]
 termsFromProofnet cgraph target = map sterm extensions
   where (nets, sgraph) = extractSubnets cgraph
         extensions = concatMap (validExtensions sgraph cgraph target) nets
+
+-- variant of the above that attempts to auto-detect the target link
+termsFromProofnet' :: CompositionGraph -> [Term]
+termsFromProofnet' cgraph = case target of
+    Nothing -> []
+    _       -> map sterm extensions
+  where (nets, sgraph) = extractSubnets cgraph
+        (_, lastSubnet) = Map.findMax sgraph
+        target = findInwardsMu lastSubnet nets
+        target' = fromJust target
+        extensions = concatMap (validExtensions sgraph cgraph target') nets
+
+findInwardsMu :: Subnet -> [Subnet] -> Maybe Link
+findInwardsMu net nets = listToMaybe candidates'
+  where nets' = filter (/= net) nets
+        candidates = concatMap (Set.toList . muLinks) nets'
+        inside = flip Set.member (nodes net)
+        pointsIntoNet = any inside . map referee . tentacles
+        candidates' = filter pointsIntoNet candidates
