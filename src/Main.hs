@@ -52,9 +52,7 @@ stage2 gs = do
 stage3 :: [CompositionGraph] -> IO ()
 stage3 gs = do
   putStrLn "The associated term(s) are:"
-  mapM_ print $ concatMap (termsFromProofnet g) ls
-  where g  = head gs
-        ls = links g
+  mapM_ print $ termsFromProofnet' $ head gs
 
 
 -- Generates possible proof structures for "(a/b)/b", as in Figure 15 of M&M (2012)
