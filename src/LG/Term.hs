@@ -2,34 +2,34 @@ module LG.Term where
 
 import LG.Base
 
-data Term = V ValueTerm | E ContextTerm | C CommandTerm deriving (Eq, Show)
+data Term = V ValueTerm | E ContextTerm | C CommandTerm deriving (Eq)
 
-data NodeTerm = Va ValueTerm' | Ev ContextTerm' deriving (Eq, Show)
+data NodeTerm = Va ValueTerm' | Ev ContextTerm' deriving (Eq)
 
 data ValueTerm'   = Variable Name
                   | ValueTerm   :<×> ValueTerm
                   | ContextTerm :<\> ValueTerm
                   | ValueTerm   :</> ContextTerm
-                  deriving (Eq, Show)
+                  deriving (Eq)
 
 data ValueTerm    = V' ValueTerm'
                   | Mu Name CommandTerm
-                  deriving (Eq, Show)
+                  deriving (Eq)
 
 data ContextTerm' = Covariable Name
                   | ValueTerm    :\  ContextTerm
                   | ContextTerm  :/  ValueTerm
                   | ContextTerm :<+> ContextTerm
-                  deriving (Eq, Show)
+                  deriving (Eq)
 
 data ContextTerm  = E' ContextTerm'
                   | Comu Name CommandTerm
-                  deriving (Eq, Show)
+                  deriving (Eq)
 
 data CommandTerm  = Cut Name Name Name CommandTerm  -- (first second) / third
                   | ValueTerm' :⌈ Name              -- Command right
                   | Name       :⌉ ContextTerm'      -- Command left
-                  deriving (Eq, Show)
+                  deriving (Eq)
 
 fromNodeTerm :: NodeTerm -> Term
 fromNodeTerm (Va t) = V (V' t)
@@ -119,3 +119,37 @@ t1 `isSubtermOf` t2 = t1 == t2 || case t2 of
         (E (E' (Covariable n'))) -> n == n' || t1 `isSubtermOf` (C t3)
         _                        ->            t1 `isSubtermOf` (C t3)
         -- (slightly too permissive)
+
+instance Show Term where
+    show (V m) = show m
+    show (E m) = show m
+    show (C m) = show m
+
+instance Show NodeTerm where
+    show (Va m) = show m
+    show (Ev m) = show m
+
+instance Show ValueTerm where
+    show (V' m) = show m
+    show (Mu v m) = "µ" ++ v ++ "." ++ show m
+
+instance Show ValueTerm' where
+    show (Variable v) = v
+    show (m :<×> n) = "(" ++ show m ++ " <×> " ++ show n ++ ")"
+    show (m :<\> n) = "(" ++ show m ++ " <\\> " ++ show n ++ ")"
+    show (m :</> n) = "(" ++ show m ++ " </> " ++ show n ++ ")"
+
+instance Show ContextTerm where
+    show (E' m) = show m
+    show (Comu v m) = "µ̃." ++ v ++ "." ++ show m
+
+instance Show ContextTerm' where
+    show (Covariable v) = v
+    show (m  :\  n) = "(" ++ show m ++ " \\ " ++ show n ++ ")"
+    show (m  :/  n) = "(" ++ show m ++ " / " ++ show n ++ ")"
+    show (m :<+> n) = "(" ++ show m ++ " <+> " ++ show n ++ ")"
+
+instance Show CommandTerm where
+    show (m :⌈ v) = "〈" ++ show m ++ " ⌈ " ++ v ++ "〉"
+    show (v :⌉ m) = "〈" ++ v ++ " ⌉ " ++ show m ++ "〉"
+    show (Cut t u v m) = "(" ++ t ++ " " ++ u ++ ")÷" ++ v ++ "." ++ show m

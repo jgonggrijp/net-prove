@@ -35,10 +35,10 @@ y     = Variable "y"
 y'    = Variable "y'"
 z     = Variable "z"
 z'    = Variable "z'"
-alpha = Covariable "a"
-beta  = Covariable "b"
-beta' = Covariable "b'"
-gamma = Covariable "g"
+alpha = Covariable "α"
+beta  = Covariable "β"
+beta' = Covariable "β'"
+gamma = Covariable "γ"
 
 -- node and link descriptions
 -- #:           id of a node
