@@ -40,13 +40,14 @@ mainFormula (ts :●: tt) = maybe (findMain tt) Just (findMain ts)
 mainFormula (_  :|: _ ) = Nothing
 
 
-premises, succedents :: Link -> [Tentacle]
+premises, succedents, tentacles :: Link -> [Tentacle]
 premises   (ts :○: _ ) = ts
 premises   (ts :●: _ ) = ts
 premises   (t  :|: _ ) = [t]
 succedents (_  :○: ts) = ts
 succedents (_  :●: ts) = ts
 succedents (_  :|: t ) = [t]
+tentacles link = premises link ++ succedents link
 
 
 prem, conc :: Link -> [Identifier]
