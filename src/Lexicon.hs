@@ -6,7 +6,7 @@ module Lexicon where
     data Entry = LexEntry {
       term    :: NodeTerm,
       formula :: Formula
-    }
+    } deriving (Show)
 
     -- Returns the lexical entries to which the given strings map. We assume for simplicity that one word maps to at most one lexical entry.
     entries :: [String] -> Maybe [Entry]

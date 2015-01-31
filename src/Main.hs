@@ -16,6 +16,15 @@ import System.Environment
 
 main :: IO ()
 main = do
+  printr (Lexicon.entries . wordsBy (not . isLetter) $ "John likes Mary")
+  --case  of
+   -- Just hypotheses -> 
+    --Nothing         -> putStrLn "The expression was not recognised."
+
+printr (Just hypotheses) = putStrLn $ show $ (unfold hypotheses conclusionSentence)
+printr Nothing           = putStrLn "The expression was not recognised."  
+
+main' = do
   putStrLn "Enter sentence to prove:"
   sentence <- getLine
   stage0 sentence
@@ -24,15 +33,14 @@ main = do
 -- Parsing
 stage0 :: String -> IO ()
 stage0 sentence = do
-  case Lexicon.entries . wordsBy (not . isLetter) $ sentence of
-    Just hypotheses -> stage1 hypotheses conclusionSentence
-    Nothing         -> putStrLn "The expression was not recognised."
+ case Lexicon.entries . wordsBy (not . isLetter) $ sentence of
+    Just hypotheses -> stage1 hypotheses conclusionSentence 
+    Nothing         -> putStrLn "The expression was not recognised."  
 
 
 -- Unfolding
 stage1 :: [Lexicon.Entry] -> [Lexicon.Entry] -> IO ()
 stage1 hypotheses conclusion = do
-  putStrLn $ show $ unfold hypotheses conclusion
   stage2 $ identifyNodes $ unfold hypotheses conclusion
 
 
