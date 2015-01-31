@@ -1,4 +1,4 @@
-module LG.Identify where
+module LG.Identify (identifyNodes) where
 import LG.Base
 import LG.Term
 import LG.Graph
@@ -7,10 +7,11 @@ import LG.Term
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
--- identifyNodes is used to identify atomic nodes in a composition graph in a maximal way, that is: all possible combinations are tried out, exhaustively.
+-- identifyNodes is used to identify leaf nodes in a composition graph in a maximal way, that is: all possible combinations of identification are tried out, exhaustively.
 -- See M&M, p. 7: "We obtain a proof structure of (s </> s) <\> np ⇒ s / (np \ s) by identifying atomic formulas"
--- Note that the returned composition graphs are not guaranteed to be proof nets, only guaranteed to have no more possibilities of identifying atomic formula nodes!
--- Also note that this function does not take node order into account, and so will produce a proof net for 'mary likes john' as well as 'john likes mary' if they're both of the form 'np <x> (np\s)/np<x> np'.
+--
+-- Note that the returned composition graphs are not guaranteed to be proof nets, only guaranteed to have no more possibilities of identifying leaf nodes!
+-- (TODO: fix this) Also note that this function does not take node order into account, and so will produce a proof net for 'mary likes john' as well as 'john likes mary' if they're both of the form 'np <x> (np\s)/np<x> np'.
 identifyNodes :: CompositionGraph -> [CompositionGraph]
 identifyNodes g0 = map ((createGraph g0).Set.toList) compatibleSubsets
   where leafs = leafNodes g0
@@ -45,7 +46,7 @@ subsets [] = [[]]
 subsets (x:xs) = (map (x:) y) ++ y
   where y = subsets xs
 
--- Completes an identification: id1 and id2 are removed from the graph, and linkMe1 and linkMe2 get a new axioma link:
+-- Completes an identification: id1 and id2 are removed from the graph, and linkMe1 and linkMe2 get a new axioma link between them:
 --
 --             * linkMe2
 --             |                             * linkMe2
@@ -54,7 +55,7 @@ subsets (x:xs) = (map (x:) y) ++ y
 -- |
 -- * linkMe1
 --
--- Note that axiom link collapse (M&M, p. 23: Def 3.2; bullet 3) happens implicitly in this function.
+-- Note that axiom link collapse (M&M, p. 23: Def 3.2; bullet 3) happens implicitly in this function as id1 and id2 are removed from the graph.
 -- Complexity: O(log n)
 graphAfterIdentification :: (Identifier,Identifier) -> CompositionGraph -> CompositionGraph
 graphAfterIdentification (id1,id2) g0 = g3
@@ -69,7 +70,7 @@ graphAfterIdentification (id1,id2) g0 = g3
 -- Complexity: O(log n)
 setIsPremiseOf :: Maybe Link -> Identifier -> CompositionGraph -> CompositionGraph
 setIsPremiseOf premOf id g = Map.insert id (Node f t premOf concOf) g
-  where Just (Node f t _ concOf) = if Map.lookup id g == Nothing then error ((show id)++" not found") else Map.lookup id g 
+  where Just (Node f t _ concOf) = if Map.lookup id g == Nothing then error ((show id)++" not found") else Map.lookup id g
 
 -- Replaces conclusion of node in given map for given Identifier with given link. (Note: this does not check whether the given node id is *actually* a conclusion of the given link)
 -- Complexity: O(log n)
@@ -123,4 +124,3 @@ collapseAxiomLinks g = collapseConclusionLinks (((map (\(Node _ _ _ l)->l)) . (f
                         replaceInList replaceMe withMe inList = map replaceIdInTentance inList
                         replaceIdInTentance t@(Active x) = if x==replaceMe then Active withMe else t
                         replaceIdInTentance t@(MainT x) = if x==replaceMe then MainT withMe else t
-

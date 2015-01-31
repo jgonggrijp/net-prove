@@ -32,6 +32,7 @@ stage0 sentence = do
 -- Unfolding
 stage1 :: [Lexicon.Entry] -> [Lexicon.Entry] -> IO ()
 stage1 hypotheses conclusion = do
+  putStrLn $ show $ unfold hypotheses conclusion
   stage2 $ identifyNodes $ unfold hypotheses conclusion
 
 
