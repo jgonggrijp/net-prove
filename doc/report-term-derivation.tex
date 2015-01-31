@@ -1,0 +1,60 @@
+\documentclass{article}
+\usepackage[a4paper]{geometry}
+\usepackage{amssymb} 
+\usepackage{amsmath} 
+\usepackage{stmaryrd}
+\usepackage{graphicx}
+\usepackage{latexsym}
+\usepackage{proof}
+\usepackage{mathabx}
+\usepackage{xcolor}
+\usepackage[british]{babel}
+\usepackage{inputenc,fontenc}
+\usepackage{listings}
+
+\lstloadlanguages{Haskell}
+\lstnewenvironment{code}
+    {\lstset{}%
+      \csname lst@SetFirstLabel\endcsname}
+    {\csname lst@SaveFirstLabel\endcsname}
+\lstset{%
+  language=Haskell,
+  basicstyle=\footnotesize\ttfamily,
+  commentstyle=\itshape\color{gray},
+  inputencoding=utf8,
+  extendedchars=false,
+  literate={+}{{$+$}}1 {/}{{$/$}}1 {*}{{$*$}}1
+           {>}{{$>$}}1 {<}{{$<$}}1 {\\}{{$\lambda$}}1
+           {\\\\}{{\char`\\\char`\\}}1
+           {->}{{$\rightarrow$}}2 {>=}{{$\geq$}}2 {<-}{{$\leftarrow$}}2
+           {<=}{{$\leq$}}2 {=>}{{$\Rightarrow$}}2
+           {\ .}{{$\circ$}}2 {\ .\ }{{$\circ$}}3
+           % {>>}{{>>}}2 {>>=}{{>>=}}3
+           % {{○}}{{$\circ$}}1 {:●:}{{:{$\bullet$}:}}3
+           {:-:}{{:{$-$}:}}3 {:|:}{{:{$\mid$}:}}3
+           {|}{{$\mid$}}1
+}
+
+\usepackage{fontspec,xltxtra,xunicode}
+\defaultfontfeatures{Mapping=tex-text}
+\setromanfont[SmallCapsFont={Bodoni SvtyTwo SC ITC TT}]{Palatino}
+\setsansfont[Scale=MatchLowercase]{Helvetica}
+\setmonofont[Scale=MatchLowercase]{Courier New}
+
+\newcommand{\nd}[2]{#1 \vdash #2}
+\newcommand{\Ra}{\rightarrow}
+\newcommand{\lolli}{\multimap}
+\newcommand{\bs}{\backslash}
+\newcommand{\W}[1]{\textsf{#1}}
+\newcommand{\ld}{\lambda}
+
+\title{Term derivation in proof nets for the Lambek-Grishin calculus}
+\author{Julian Gonggrijp}
+\date{}
+
+\begin{document}
+\maketitle
+
+\input{../src/LG/Subnet.lhs}
+
+\end{document}
