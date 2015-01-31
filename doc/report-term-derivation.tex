@@ -9,31 +9,9 @@
 \usepackage{mathabx}
 \usepackage{xcolor}
 \usepackage[british]{babel}
-\usepackage{inputenc,fontenc}
-\usepackage{listings}
+\usepackage{fancyvrb}
 
-\lstloadlanguages{Haskell}
-\lstnewenvironment{code}
-    {\lstset{}%
-      \csname lst@SetFirstLabel\endcsname}
-    {\csname lst@SaveFirstLabel\endcsname}
-\lstset{%
-  language=Haskell,
-  basicstyle=\footnotesize\ttfamily,
-  commentstyle=\itshape\color{gray},
-  inputencoding=utf8,
-  extendedchars=false,
-  literate={+}{{$+$}}1 {/}{{$/$}}1 {*}{{$*$}}1
-           {>}{{$>$}}1 {<}{{$<$}}1 {\\}{{$\lambda$}}1
-           {\\\\}{{\char`\\\char`\\}}1
-           {->}{{$\rightarrow$}}2 {>=}{{$\geq$}}2 {<-}{{$\leftarrow$}}2
-           {<=}{{$\leq$}}2 {=>}{{$\Rightarrow$}}2
-           {\ .}{{$\circ$}}2 {\ .\ }{{$\circ$}}3
-           % {>>}{{>>}}2 {>>=}{{>>=}}3
-           % {{○}}{{$\circ$}}1 {:●:}{{:{$\bullet$}:}}3
-           {:-:}{{:{$-$}:}}3 {:|:}{{:{$\mid$}:}}3
-           {|}{{$\mid$}}1
-}
+\DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\footnotesize}
 
 \usepackage{fontspec,xltxtra,xunicode}
 \defaultfontfeatures{Mapping=tex-text}
