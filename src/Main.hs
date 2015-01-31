@@ -25,7 +25,7 @@ main = do
 stage0 :: String -> IO ()
 stage0 sentence = do
   case Lexicon.entries . wordsBy (not . isLetter) $ sentence of
-    Just hypotheses -> stage1 hypotheses conclusion
+    Just hypotheses -> stage1 hypotheses conclusionSentence
     Nothing         -> putStrLn "The expression was not recognised."
 
 
@@ -68,8 +68,8 @@ figure15 = g1
 figure18 = stage0 "sub tv det noun"
 
 
-conclusion :: [Lexicon.Entry]
-conclusion = fromJust $ Lexicon.entries ["s"]
+conclusionSentence :: [Lexicon.Entry]
+conclusionSentence = fromJust $ Lexicon.entries ["s"]
 
 line :: String
 line = "\n------------------\n"

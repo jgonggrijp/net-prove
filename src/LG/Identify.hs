@@ -12,7 +12,7 @@ import qualified Data.Set as Set
 --
 -- Note that the returned composition graphs are not guaranteed to be proof nets, only guaranteed to have no more possibilities of identifying leaf nodes!
 -- (TODO: fix this) Also note that this function does not take node order into account, and so will produce a proof net for 'mary likes john' as well as 'john likes mary' if they're both of the form 'np <x> (np\s)/np<x> np'.
-identifyNodes :: CompositionGraph -> [CompositionGraph]
+identifyNodes :: [CompositionGraph] -> [CompositionGraph]
 identifyNodes g0 = map ((createGraph g0).Set.toList) compatibleSubsets
   where leafs = leafNodes g0
         possibleIdentifications = [(i,j) | i@(id1:@(Node iFormula _ iPrem iConc)) <- leafs,
