@@ -1,5 +1,22 @@
 module LG.Subnet where
 
+{-
+    As explained in [MM12 p. 24], term derivation for a proof net
+    takes two steps. First, all maximal rooted subnets (i.e. with a
+    single main formula) consisting of tensor links are extracted
+    from the composition graph and the corresponding links are marked
+    as visited. Second, the remaining cotensor/command/mu links are
+    followed and subnets are merged until all links have been visited.
+
+    This module defines a datastructure that corresponds to the
+    aforementioned subnets, as well as several associated functions
+    that facilicate the first step of term derivation. There are some
+    superficial differences between the theoretical description in
+    [MM12] and the technical implementation in here, which will be
+    highlighted as appropriate. The results, however, are exactly the
+    same.
+-}
+
 import Data.Maybe
 import qualified Data.Map as Map
 import qualified Data.Set as Set
