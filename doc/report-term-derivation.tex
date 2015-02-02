@@ -9,15 +9,42 @@
 \usepackage{mathabx}
 \usepackage{xcolor}
 \usepackage[british]{babel}
-\usepackage{fancyvrb}
-
-\DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\footnotesize}
 
 \usepackage{fontspec,xltxtra,xunicode}
 \defaultfontfeatures{Mapping=tex-text}
-\setromanfont[SmallCapsFont={Bodoni SvtyTwo SC ITC TT}]{Palatino}
+\setromanfont[]{Palatino}
 \setsansfont[Scale=MatchLowercase]{Helvetica}
 \setmonofont[Scale=MatchLowercase]{Courier New}
+
+\usepackage{inputenc,listings}
+
+\definecolor{cLibrary}{rgb}{0.8,0,0.5}
+\lstloadlanguages{Haskell}
+\lstset{%
+  language=Haskell,
+  alsoletter={\$\_\=\:\|-><},
+  morekeywords=[1]{as, \$, \_, \=, \=\=, \|, \:\:, ->, \=>},
+  deletekeywords=[1]{Eq, Show, union, Maybe},
+  morekeywords=[2]{Data, Map, Set, union, Eq, Show, singleton, empty, isSubsetOf, Maybe},
+  basicstyle=\footnotesize\ttfamily,
+  commentstyle=\itshape\color{gray},
+  keywordstyle=[2]{\color{cLibrary}},
+  inputencoding=utf8,
+  extendedchars=false,
+  numbers=left,
+  numberstyle=\tiny,
+  literate={+}{{$+$}}1 {/}{{$/$}}1 {*}{{$*$}}1
+           {>}{{$>$}}1 {<}{{$<$}}1 {\\}{{$\lambda$}}1
+           {\\\\}{{\char`\\\char`\\}}2
+           {:\\}{{:\\}}2 {:\\:}{{:\\:}}3
+           {->}{{$\rightarrow$}}2 {>=}{{$\geq$}}2
+           {<-}{{$\leftarrow$}}2
+           {<=}{{$\leq$}}2 {=>}{{$\Rightarrow$}}2
+           {\ .}{{$\circ$}}2 {\ .\ }{{$\circ$}}3
+           {>>}{{>>}}2 {>>=}{{>>=}}3
+           {|}{{$\mid$}}1
+           {:-:}{{:-:}}3 {:|:}{{:$\mid$:}}3
+}
 
 \newcommand{\nd}[2]{#1 \vdash #2}
 \newcommand{\Ra}{\rightarrow}
@@ -33,6 +60,6 @@
 \begin{document}
 \maketitle
 
-\input{../src/LG/Subnet.lhs}
+\lstinputlisting{../src/LG/Subnet.hs}
 
 \end{document}

@@ -1,4 +1,3 @@
-\begin{code}
 module LG.Subnet where
 
 import Data.Maybe
@@ -115,4 +114,3 @@ expandNode nodeID net graph link | net' `includes` net = net'
                                  | otherwise           = merge net' net var
   where net' = consumeLink net graph nodeID link
         var = term $ fromJust $ Map.lookup nodeID graph
-\end{code}
