@@ -10,3 +10,7 @@ cabal-dev
 cabal.sandbox.config
 cabal.config
 .dist-buildwrapper/
+.aux
+.log
+.gz
+.pdf
