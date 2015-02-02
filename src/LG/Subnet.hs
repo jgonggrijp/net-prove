@@ -118,7 +118,39 @@ net2 `includes` net1 = and [incNodes, incTerm, incCommand, incCotensor, incMu]
         incCotensor = (cotensorLinks net1) `Set.isSubsetOf` (cotensorLinks net2)
         incMu = (muLinks net1) `Set.isSubsetOf` (muLinks net2)
 
+{-
+    The core algorithm for inductive Subnet building starts here. We
+    have three functions, consumeLink, expandTentacle' and
+    expandNode, which recurse into each other cyclically until a
+    non-tensor, non-substitution link is met. Given a valid Subnet in
+    the context of a valid CompositionGraph, these functions always
+    return a correct (intermediate) result; it is not necessary to
+    feed nodes or links in any particular order, as long as the
+    provided link or node is attached to the current subnet. It also
+    does not matter whether substitution links are still present in
+    the CompositionGraph, or whether they have been (partially)
+    collapsed.
+
+    consumeLink considers a link relative to the identifier of a
+    node through which it is attached (to the exterior) of the
+    current subnet. Depending on the link type, the directions of the
+    tentacles and the polarity of the formulae involved, more links
+    and nodes may be added to the interior of the current subnet,
+    followable links may be added to its periphery, or the subnet may
+    be returned unmodified.
+-}
 consumeLink :: Subnet -> CompositionGraph -> Identifier -> Link -> Subnet
+{-
+    When applied to a tensor link, the current subnet is always
+    expanded. One may consider the tensor link a meeting point
+    between three subnets: one subnet that is attached to the main
+    tentacle and two subnets that are attached to the active
+    tentacles. In the combined subnet, the terms for the latter are
+    substituted in the term of the main tentacle, which in turn is
+    substituted for a remote (co)variable of the former subnet. One
+    of the three interfacing subnets has already been provided as the
+    current subnet, so that direction is not followed.
+-}
 consumeLink net graph nodeID link@(_ :○: _)
     | nodeID == head ids = linkNet''
     | otherwise          = expandTentacle' linkNet'' graph tMain
@@ -135,6 +167,12 @@ consumeLink net graph nodeID link@(_ :○: _)
              | otherwise             = expandTentacle' (fromNode o2) graph t2
         linkNet' = merge sub1 linkNet $ term n1
         linkNet'' = merge sub2 linkNet' $ term n2
+{-
+    When applied to a cotensor link, expansion always stops. As
+    discussed above, the link may be added as an exterior followable,
+    but only if both of its active tentacles are attached to the
+    current subnet.
+-}
 consumeLink _ graph nodeID link@(_ :●: _)
     | nodeID == referee' tMain = fromNode $ nodeID :@ nodeInfo
     | otherwise                = net'
@@ -143,6 +181,15 @@ consumeLink _ graph nodeID link@(_ :●: _)
         (Just tMain :-: actives) = transpose link
         none = Set.empty
         net' = Subnet (Set.singleton nodeID) term none (Set.singleton link) none
+{-
+    Axiom links are subcategorized into substitution links, command
+    links and (co)mu links. In the first case, expansion of the
+    current subnet should continue (note that this is a difference
+    from the description in [MM12 p. 24-25], where all substitution
+    links are assumed to have been removed beforehand). In the latter
+    two cases, expansion stops but the link may be added as an
+    exterior followable.
+-}
 consumeLink net graph nodeID link@(t1 :|: t2)
     | nodeID == i1 = case terms of
         [(Va _), (Ev _)] -> commandNet
@@ -177,11 +224,26 @@ consumeLink net graph nodeID link@(t1 :|: t2)
         sub1' = expandTentacle' sub1 graph (Prem i1)
         sub2' = expandTentacle' sub2 graph (Succ i2)
 
+{-
+    expandTentacle' considers (the identifier of) a node on the outer
+    fringe of the current subnet, which is either a hypothesis or a
+    conclusion of the current subnet. In order to facilitate the
+    distinction, the identifier is passed inside a Tentacle' (see
+    LG.Graph), hence the name of the function. Subnet expansion is
+    then continued with whichever link attached to the node (of the
+    given identifier) is *exterior* to the current subnet (if any).
+-}
 expandTentacle' :: Subnet -> CompositionGraph -> Tentacle' -> Subnet
 expandTentacle' net graph tentacle' = case tentacle' of
     (Prem nodeID) -> maybe net (expandNode nodeID net graph) $ succedentOf $ fromJust $ Map.lookup nodeID graph
     (Succ nodeID) -> maybe net (expandNode nodeID net graph) $ premiseOf $ fromJust $ Map.lookup nodeID graph
 
+{-
+    expandNode wraps consumeLink, in case the link under
+    consideration is tensor and the current subnet is attached to its
+    main tentacle. In that case, the subnet that is returned still
+    has to be absorbed into the current subnet.
+-}
 expandNode :: Identifier -> Subnet -> CompositionGraph -> Link -> Subnet
 expandNode nodeID net graph link | net' `includes` net = net'
                                  | otherwise           = merge net' net var
