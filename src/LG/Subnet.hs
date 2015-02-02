@@ -235,8 +235,11 @@ consumeLink net graph nodeID link@(t1 :|: t2)
 -}
 expandTentacle' :: Subnet -> CompositionGraph -> Tentacle' -> Subnet
 expandTentacle' net graph tentacle' = case tentacle' of
-    (Prem nodeID) -> maybe net (expandNode nodeID net graph) $ succedentOf $ fromJust $ Map.lookup nodeID graph
-    (Succ nodeID) -> maybe net (expandNode nodeID net graph) $ premiseOf $ fromJust $ Map.lookup nodeID graph
+    (Prem _) -> maybe net expandInto $ succedentOf $ nodeInfo
+    (Succ _) -> maybe net expandInto $ premiseOf   $ nodeInfo
+  where nodeID = referee' tentacle'
+        nodeInfo = fromJust $ Map.lookup nodeID graph
+        expandInto = expandNode nodeID net graph
 
 {-
     expandNode wraps consumeLink, in case the link under
