@@ -141,7 +141,7 @@ instance Show ValueTerm' where
 
 instance Show ContextTerm where
     show (E' m) = show m
-    show (Comu v m) = "µ̃." ++ v ++ "." ++ show m
+    show (Comu v m) = "µ̃" ++ v ++ "." ++ show m
 
 instance Show ContextTerm' where
     show (Covariable v) = v
