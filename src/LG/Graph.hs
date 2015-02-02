@@ -27,13 +27,14 @@ data Link = [Tentacle] :○: [Tentacle]  -- Tensor
           |  Tentacle  :|:  Tentacle   -- Axioma
           deriving (Eq, Ord, Show)
 
-premises, succedents :: Link -> [Tentacle]
+premises, succedents, tentacles :: Link -> [Tentacle]
 premises   (ts :○: _ ) = ts
 premises   (ts :●: _ ) = ts
 premises   (t  :|: _ ) = [t]
 succedents (_  :○: ts) = ts
 succedents (_  :●: ts) = ts
 succedents (_  :|: t ) = [t]
+tentacles link = premises link ++ succedents link
 
 mainFormula :: Link -> Maybe Tentacle
 mainFormula (ts :○: tt) = maybe (findMain tt) Just (findMain ts)
