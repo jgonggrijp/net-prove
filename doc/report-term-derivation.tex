@@ -17,6 +17,8 @@
 \setmonofont[Scale=MatchLowercase]{FreeMono}
 
 \usepackage{minted}
+\usemintedstyle{netprovetermstyle}
+\newmintedfile{haskell}{numbers=left,fontsize=\footnotesize}
 
 \newcommand{\nd}[2]{#1 \vdash #2}
 \newcommand{\Ra}{\rightarrow}
@@ -40,12 +42,12 @@ Automated theorem provers tend to work in ``sequent style'', searching top-down 
 
 After defining a core datastructure as the interface between components of the theorem prover, we devided the remaining work into three subprojects that could be developed in parallel. Term derivation, the topic of the current paper, is one of those three subprojects. By the Curry-Howard isomorphism, every proof has a compact, algebraic representation called a term; since a proof net is also a proof, it follows that it can be represented with a term. The task of the author was to realise this for our Haskell implementation of LG proof nets. The term would then be available as a universal interface for further use; as a convenient proof representation to the human reader, as a source from which to reconstruct the display sequent version of the proof, or as the input material to a homomorphic mapping to another calculus in a categorial grammar setup. In particular, a CPS translation to MILL/LP has been shown to be worthwhile when LG is the source calculus. \cite{mm12}
 
-\inputminted{haskell}{../src/LG/Term.hs}
+\haskellfile{../src/LG/Term.hs}
 
-\inputminted{haskell}{../src/LG/Subnet.hs}
+\haskellfile{../src/LG/Subnet.hs}
 
-\inputminted{haskell}{../src/LG/SubnetGraph.hs}
+\haskellfile{../src/LG/SubnetGraph.hs}
 
-\inputminted{haskell}{../src/LG/TestGraph.hs}
+\haskellfile{../src/LG/TestGraph.hs}
 
 \end{document}
