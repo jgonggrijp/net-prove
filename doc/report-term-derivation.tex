@@ -25,14 +25,18 @@
 \newcommand{\W}[1]{\textsf{#1}}
 \newcommand{\ld}{\lambda}
 
-\title{Term derivation in proof nets for the Lambek-Grishin calculus}
-\author{Julian Gonggrijp}
-\date{}
-
 \begin{document}
+
+\title{Term derivation in automated proof nets for the Lambek-Grishin calculus}
+\author{Julian Gonggrijp\thanks{Joint project with Niels Steenbergen and Maarten Trompper}}
+\date{}
 \maketitle
 
 \section{Introduction}
+
+The Lambek-Grishin calculus (LG) is an extension of Lambek calculus that has proven itself in the analysis of several context-sensitive natural language phenomena. sLG, a display sequent calculus for LG, has been shown to be tractable. \cite{m09} However, it allows for spurious ambiguity, requires explicit manipulation of sequents that are equivalent under structural rules and depends on a predetermined sequent structure. For the latter reason, sLG alone cannot be used to parse a sentence. Moortgat and Moot (2012) provided a proof net formalism for LG that solves all of these issues. \cite{mm12}
+
+Automated theorem provers tend to work in ``sequent style'', searching top-down by backwards chaining. A theorem prover based on proofnets could work bottom-up instead and compute the proof structure---hence, parse a sentence---as a byproduct. To our knowledge, such a theorem prover was not yet built for LG. We decided to fill this gap using Haskell. The context for this endeavour was the 2014--2015 Master's course \emph{Logic and Language}, taught by Prof. dr. Michael Moortgat at Utrecht University\footnote{link}.
 
 
 
