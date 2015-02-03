@@ -44,60 +44,30 @@ type SubnetGraph = Map.Map Identifier Subnet
     to do that for all nodes in a CompositionGraph and end up with
     the complete set of its rooted subnets. This calls for a fold!
 
-    During the fold, several things need to be kept track of. Not
-    only do we want to collect subnets and remember which node
-    belongs to which subnet, but we also want to keep track of which
-    nodes have been visited in order to not repeat any work. On top
-    of that, we need the CompositionGraph in order to find the nodes
-    that are attached to a particular link. ExtractionProgress is our
-    convenient datastructure to hold all that inforation.
+    Extraction is the accumulator type as well as the result type.
 -}
-data ExtractionProgress = Progress { graph        :: CompositionGraph
-                                   , nodesVisited :: Set.Set Identifier
-                                   , subnets      :: [Subnet]
-                                   , subnetGraph  :: SubnetGraph
-                                   }
-
-{-
-    seedProgress provides the initial accumulator for the fold.
--}
-seedProgress :: CompositionGraph -> ExtractionProgress
-seedProgress graph = Progress graph Set.empty [] Map.empty
+type Extraction = ([Subnet], SubnetGraph)
 
 {-
     extractSubnets does the actual fold.
 -}
-extractSubnets :: CompositionGraph -> ([Subnet], SubnetGraph)
-extractSubnets graph = (subnets extractEnd, subnetGraph extractEnd)
-  where extractEnd = Map.foldrWithKey extractSubnets' extractStart graph
-        extractStart = seedProgress graph
+extractSubnets :: CompositionGraph -> Extraction
+extractSubnets graph = Map.foldrWithKey extract ([], Map.empty) graph
+  where extract = extractSubnets' graph
 
 {-
     extractSubnets' is the function with which we fold over the
     CompositionGraph, and which uses the core logic from LG.Subnet
     internally.
 -}
-extractSubnets' :: Identifier -> NodeInfo -> ExtractionProgress -> ExtractionProgress
-extractSubnets' index node progress | Set.member index visited = progress
-                                    | otherwise                = progress'
-  where (Progress graph visited subs subsGraph) = progress
-        seed = fromNode (index :@ node)
+extractSubnets' :: CompositionGraph -> Identifier -> NodeInfo -> Extraction -> Extraction
+extractSubnets' graph index node accum@(subs, subsGraph)
+    | Map.member index subsGraph = accum
+    | otherwise                  = ((newsub:subs), subsGraph')
+  where seed = fromNode (index :@ node)
         newsub' = expandTentacle' seed    graph (Succ index)
         newsub  = expandTentacle' newsub' graph (Prem index)
-        visited' = Set.union visited (nodes newsub)
         subsGraph' = Set.foldr (flip Map.insert newsub) subsGraph (nodes newsub)
-        progress' = Progress graph visited' (newsub:subs) subsGraph'
-{-
-    With hindsight, this part of the module could have been
-    streamlined a bit by partially applying extractSubnets' to the
-    CompositionGraph first and by using (subnetGraph
-    ExtractionProgress) also as a lookup table for nodes that have
-    already been visited, because its keys contain the same
-    information as (nodesVisited ExtractionProgress). Then it would
-    suffice to use a tuple ([Subnet], SubnetGraph) as the
-    accumulator, and ExtractionProgress and seedProgress could be
-    eliminated altogether.
--}
 
 
 validExtensions :: SubnetGraph -> CompositionGraph -> Link -> Subnet -> [Subnet]
