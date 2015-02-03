@@ -2,6 +2,11 @@ module LG.Term where
 
 import LG.Base
 
+{-
+    Terms, as defined in definition (7) on [MM12 p. 15].
+    Show instances at the bottom of this module.
+-}
+
 data Term = V ValueTerm | E ContextTerm | C CommandTerm deriving (Eq)
 
 data NodeTerm = Va ValueTerm' | Ev ContextTerm' deriving (Eq)
@@ -31,9 +36,17 @@ data CommandTerm  = Cut Name Name Name CommandTerm  -- (first second) / third
                   | Name       :⌉ ContextTerm'      -- Command left
                   deriving (Eq)
 
+-- trivial conversion
 fromNodeTerm :: NodeTerm -> Term
 fromNodeTerm (Va t) = V (V' t)
 fromNodeTerm (Ev t) = E (E' t)
+
+{-
+    Substitute a larger term for a (co)variable in another term.
+    Because of polymorphism, this requires some administrative
+    overhead (type classes). Implementation spread over multiple
+    instance below.
+-}
 
 class Substitutable a where
     substitute :: ValidSubstitution b => b -> b -> a -> a
@@ -96,6 +109,7 @@ instance Substitutable CommandTerm where
     substitute x y (z :⌈ s)      = substitute x y z :⌈ s
     substitute x y (s :⌉ z)      = s :⌉ substitute x y z
 
+-- subterm check
 isSubtermOf :: Term -> Term -> Bool
 t1 `isSubtermOf` t2 = t1 == t2 || case t2 of
     (V (V' (Variable _))) -> False
@@ -119,6 +133,8 @@ t1 `isSubtermOf` t2 = t1 == t2 || case t2 of
         (E (E' (Covariable n'))) -> n == n' || t1 `isSubtermOf` (C t3)
         _                        ->            t1 `isSubtermOf` (C t3)
         -- (slightly too permissive)
+
+-- Show instances for pretty printing.
 
 instance Show Term where
     show (V m) = show m
