@@ -1,5 +1,25 @@
 module LG.SubnetGraph where
 
+{-
+    Term derivation from a proof net takes two steps: first, rooted
+    subnets are extracted from the graph and followable
+    command/cotensor/mu links are registered; second, the
+    aforementioned followable links are tracked and the subnets are
+    merged until a single term is associated with the entire proof
+    net. See also LG.Subnet and (of course) [MM12].
+
+    This module contains algorithms for both steps, which are
+    related through the SubnetGraph type. The latter is an
+    administrative interface, which may be regarded both as the
+    output of the first step of term derivation and as the input to
+    the second step of term derivation. The logic for the first step
+    contained in this module is just a wrapper for the core logic
+    contained in LG.Subnet. The logic for the second step, on the
+    other hand, is contained entirely in this module. At the end of
+    the module, we find a couple of function that server to wrap up
+    the entire procedure.
+-}
+
 import Data.Maybe
 import Data.Tuple (swap)
 import qualified Data.Map as Map
@@ -10,22 +30,53 @@ import LG.Term
 import LG.Graph
 import LG.Subnet
 
-type SubnetGraph = Map.Map Identifier Subnet  -- in which subnet is this node?
+{-
+    The administrative interface that is output of the first step and
+    input to the second step of term derivation. It just maps node
+    identifiers to subnets.
+-}
+type SubnetGraph = Map.Map Identifier Subnet
 
+{-
+    The wrapper for step 1 starts here. In LG.Subnet we defined the
+    necessary logic to find and accumulate the complete subnet that
+    any given node from a CompositionGraph belongs to. Now, we want
+    to do that for all nodes in a CompositionGraph and end up with
+    the complete set of its rooted subnets. This calls for a fold!
+
+    During the fold, several things need to be kept track of. Not
+    only do we want to collect subnets and remember which node
+    belongs to which subnet, but we also want to keep track of which
+    nodes have been visited in order to not repeat any work. On top
+    of that, we need the CompositionGraph in order to find the nodes
+    that are attached to a particular link. ExtractionProgress is our
+    convenient datastructure to hold all that inforation.
+-}
 data ExtractionProgress = Progress { graph        :: CompositionGraph
                                    , nodesVisited :: Set.Set Identifier
                                    , subnets      :: [Subnet]
                                    , subnetGraph  :: SubnetGraph
                                    }
 
+{-
+    seedProgress provides the initial accumulator for the fold.
+-}
 seedProgress :: CompositionGraph -> ExtractionProgress
 seedProgress graph = Progress graph Set.empty [] Map.empty
 
+{-
+    extractSubnets does the actual fold.
+-}
 extractSubnets :: CompositionGraph -> ([Subnet], SubnetGraph)
 extractSubnets graph = (subnets extractEnd, subnetGraph extractEnd)
   where extractEnd = Map.foldrWithKey extractSubnets' extractStart graph
         extractStart = seedProgress graph
 
+{-
+    extractSubnets' is the function with which we fold over the
+    CompositionGraph, and which uses the core logic from LG.Subnet
+    internally.
+-}
 extractSubnets' :: Identifier -> NodeInfo -> ExtractionProgress -> ExtractionProgress
 extractSubnets' index node progress | Set.member index visited = progress
                                     | otherwise                = progress'
@@ -36,6 +87,18 @@ extractSubnets' index node progress | Set.member index visited = progress
         visited' = Set.union visited (nodes newsub)
         subsGraph' = Set.foldr (flip Map.insert newsub) subsGraph (nodes newsub)
         progress' = Progress graph visited' (newsub:subs) subsGraph'
+{-
+    With hindsight, this part of the module could have been
+    streamlined a bit by partially applying extractSubnets' to the
+    CompositionGraph first and by using (subnetGraph
+    ExtractionProgress) also as a lookup table for nodes that have
+    already been visited, because its keys contain the same
+    information as (nodesVisited ExtractionProgress). Then it would
+    suffice to use a tuple ([Subnet], SubnetGraph) as the
+    accumulator, and ExtractionProgress and seedProgress could be
+    eliminated altogether.
+-}
+
 
 validExtensions :: SubnetGraph -> CompositionGraph -> Link -> Subnet -> [Subnet]
 validExtensions sgraph cgraph target net = case net of
