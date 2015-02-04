@@ -27,12 +27,14 @@
 \newcommand{\W}[1]{\textsf{#1}}
 \newcommand{\ld}{\lambda}
 
+
 \begin{document}
 
 \title{Term derivation in automated proof nets for the Lambek-Grishin calculus}
 \author{Julian Gonggrijp\thanks{Joint project with Niels Steenbergen and Maarten Trompper}}
 \date{}
 \maketitle
+
 
 \section{Introduction}
 
@@ -42,7 +44,30 @@ Automated theorem provers tend to work in ``sequent style'', searching top-down 
 
 After defining a core datastructure as the interface between components of the theorem prover, we devided the remaining work into three subprojects that could be developed in parallel. Term derivation, the topic of the current paper, is one of those three subprojects. By the Curry-Howard isomorphism, every proof has a compact, algebraic representation called a term; since a proof net is also a proof, it follows that it can be represented with a term. The task of the author was to realise this for our Haskell implementation of LG proof nets. The term would then be available as a universal interface for further use; as a convenient proof representation to the human reader, as a source from which to reconstruct the display sequent version of the proof, or as the input material to a homomorphic mapping to another calculus in a categorial grammar setup. In particular, a CPS translation to MILL/LP has been shown to be worthwhile when LG is the source calculus. \cite{mm12}
 
-\section{Project organisation}
+
+\section{Project overview}\label{sec:project}
+
+Every programming project starts with a specification. We decided that our theorem prover should initially at least be able to execute the following steps:
+\begin{enumerate}
+    \item let the user enter a sequence of words (unstructured), with the implicit request to prove that the words in the given order can form a grammatical sentence;
+    \item look up the words in a lexicon and retrieve their associated syntactic types (LG formulae);
+    \item generate a list with all possible proof structures for those formulae as detailed in \cite[p.~4--7]{mm12};
+    \item filter the proof nets out of that list, applying the graph transformation rules described in \cite[p.~7--11]{mm12};
+    \item compute all non-equivalent terms for each of those proof nets, following the procedure described in \cite[p.~21--26]{mm12};
+    \item tell the user whether the given sequence of words was provable and if so, list the terms that were just computed as its possible interpretations.
+\end{enumerate}
+It was agreed that Maarten Trompper would implement step 3 \cite{maarten}, Niels Steenbergen would implement step 4 \cite{niels} and Julian Gonggrijp would implement step 5 (this paper). We first jointly designed the essential datastructures for formulae, terms and graphs and then each worked on our own components in parallel. Steps 1, 2 and 6 were left for later, to be taken up by whichever developer would turn out to finish his own component first. We also identified an extended ``wish list'' of features that should ultimately be included in a future version of our project:
+\begin{itemize}
+    \item visualisation of graphs;
+    \item a \emph{large} lexicon;
+    \item CPS translation of the terms from step 5 to MILL/LP for the derivational interpretation and thence to IL for the lexical interpretation, as explained in \cite[p.~14,19--21]{mm12};
+    \item reconstruction of corresponding sequent-style proofs out of the terms from step 5, for sLG \cite[p.~3--4]{mm12} and fLG \cite[p.~15--18]{mm12};
+    \item abstractions of the datastructures and algorithms to facilitate reuse of the proof net based approach for other logical calculi, for example LP with modal operators \cite{}.
+\end{itemize}
+In anticipation of the latter wish item, we allocated a ``Framework'' directory in advance.
+
+We adopted the Cabal package format\footnote{link} from the beginning, in order to accomodate for future code reuse and deployment. Our project source code is freely available under the terms of the BSD license\footnote{link}, on GitHub\footnote{link, link, link}.
+
 
 \section{Implementation}
 
@@ -56,8 +81,10 @@ After defining a core datastructure as the interface between components of the t
 
 \subsection{Future work}
 
+
 \begin{thebibliography}{9}
 \end{thebibliography}
+
 
 \appendix
 \section{Source code}
