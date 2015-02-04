@@ -1,5 +1,7 @@
-\documentclass{article}
-\usepackage[a4paper]{geometry}
+\documentclass[12pt,a4paper]{article}
+\linespread{1.1}
+\frenchspacing
+
 \usepackage{amssymb} 
 \usepackage{amsmath} 
 \usepackage{stmaryrd}
@@ -12,13 +14,13 @@
 
 \usepackage{fontspec,xltxtra,xunicode}
 \defaultfontfeatures{Mapping=tex-text}
-\setromanfont[]{Palatino}
+\setromanfont{Palatino}
 \setsansfont[Scale=MatchLowercase]{Helvetica}
 \setmonofont[Scale=MatchLowercase]{FreeMono}
 
 \usepackage{minted}
 \usemintedstyle{netprovetermstyle}
-\newmintedfile{haskell}{numbers=left,fontsize=\footnotesize}
+\newmintedfile{haskell}{numbers=left,fontsize=\scriptsize}
 
 \newcommand{\nd}[2]{#1 \vdash #2}
 \newcommand{\Ra}{\rightarrow}
