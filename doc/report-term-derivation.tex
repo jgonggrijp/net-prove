@@ -11,6 +11,7 @@
 \usepackage{mathabx}
 \usepackage{xcolor}
 \usepackage[british]{babel}
+\usepackage{hyperref}
 
 \usepackage{fontspec,xltxtra,xunicode}
 \defaultfontfeatures{Mapping=tex-text}
@@ -20,7 +21,10 @@
 
 \usepackage{minted}
 \usemintedstyle{netprovetermstyle}
-\newmintedfile{haskell}{numbers=left,fontsize=\fontsize{9.2pt}{10pt}}
+\setminted{numbers=left,fontsize=\fontsize{9.2pt}{10pt}}
+\newmintinline[haskell]{haskell}{fontsize=\normal}
+\newminted{haskell}{autogobble,frame=single,fontsize=\small}
+\newmintedfile{haskell}{}
 
 \newcommand{\nd}[2]{#1 \vdash #2}
 \newcommand{\Ra}{\rightarrow}
@@ -28,6 +32,7 @@
 \newcommand{\bs}{\backslash}
 \newcommand{\W}[1]{\textsf{#1}}
 \newcommand{\ld}{\lambda}
+\newcommand{\coderef}[1]{\href{https://github.com/jgonggrijp/net-prove/blob/report/#1}{\texttt{#1}}}
 
 
 \begin{document}
@@ -42,7 +47,7 @@
 
 The Lambek-Grishin calculus (LG) is an extension of Lambek calculus that has proven itself in the analysis of several context-sensitive natural language phenomena. sLG, a display sequent calculus for LG, has been shown to be tractable. \cite{m09} However, it allows for spurious ambiguity, requires explicit manipulation of sequents that are equivalent under structural rules and depends on a predetermined sequent structure. For the latter reason, sLG alone cannot be used to parse a sentence. Moortgat and Moot (2012) provided a proof net formalism for LG that solves all of these issues. \cite{mm12}
 
-Automated theorem provers tend to work in ``sequent style'', searching top-down by backwards chaining. A theorem prover based on proofnets could work bottom-up instead and compute the proof structure---hence, parse a sentence---as a byproduct. To our knowledge, such a theorem prover was not yet built for LG. We decided to fill this gap using Haskell. The context for this endeavour was the 2014--2015 Master's course \emph{Logic and Language}, taught by Prof. dr. Michael Moortgat at Utrecht University\footnote{link}.
+Automated theorem provers tend to work in ``sequent style'', searching top-down by backwards chaining. A theorem prover based on proofnets could work bottom-up instead and compute the proof structure---hence, parse a sentence---as a byproduct. To our knowledge, such a theorem prover was not yet built for LG. We decided to fill this gap using Haskell. The context for this endeavour was the 2014--2015 Master's course \emph{Logic and Language} (LoLa), taught by Prof. dr. Michael Moortgat at Utrecht University\footnote{link}.
 
 After defining a core datastructure as the interface between components of the theorem prover, we devided the remaining work into three subprojects that could be developed in parallel. Term derivation, the topic of the current paper, is one of those three subprojects. By the Curry-Howard isomorphism, every proof has a compact, algebraic representation called a term; since a proof net is also a proof, it follows that it can be represented with a term. The task of the author was to realise this for our Haskell implementation of LG proof nets. The term would then be available as a universal interface for further use; as a convenient proof representation to the human reader, as a source from which to reconstruct the display sequent version of the proof, or as the input material to a homomorphic mapping to another calculus in a categorial grammar setup. In particular, a CPS translation to MILL/LP has been shown to be worthwhile when LG is the source calculus. \cite{mm12}
 
@@ -68,10 +73,53 @@ It was agreed that Maarten Trompper would implement step 3 \cite{maarten}, Niels
 \end{itemize}
 In anticipation of the latter wish item, we allocated a ``Framework'' directory in advance.
 
-We adopted the Cabal package format\footnote{link} from the beginning, in order to accomodate for future code reuse and deployment. Our project source code is freely available under the terms of the BSD license\footnote{link}, on GitHub\footnote{link, link, link}.
+We adopted the Cabal package format\footnote{link} from the beginning, in order to accomodate for future code reuse and deployment. Our project source code is freely available under the terms of the BSD license\footnote{link}, on GitHub\footnote{link, link, link\label{ftn:github}}.
 
 
 \section{Implementation}
+
+Steps 1, 2 and 6 from Section \ref{sec:project} will not be discussed here, because these steps are not of primary interest to the LoLa course and the implementation is relatively straightforward. Suffice to say that these steps \emph{have} been implemented. Niels Steenbergen has written a crude but effective pretty-printer for the graphs which will not be discussed here, either. All of the project implementation can be retrieved from GitHub if desired (see Footnote \ref{ftn:github}); we will occasionally refer to the source code using paths relative to the project root. Discussion of the implementations of steps 3 and 4 is left to the respective authors \cite{maarten,niels}. The remainder of this section covers the common datastructures and step 5.
+
+
+\subsection{Core datastructures}
+
+Formulae and terms were implemented as tree-like datastructures with strict typing. Visually appealing value constructors were used when feasible. Integer identifiers were used to distinguish occurrences of the same formula or term. For the details, please refer to the code as it is self-explanatory: see \coderef{src/LG/Base.hs} and \coderef{src/LG/Term.hs} (the latter is also listed in Appendix \ref{code:term}).
+
+Implementation of the links was a bit more challenging, because several orthogonal kinds of information had to be encoded and it would be undesirable to write a separate constructor for each possible combination of options. The relevant aspects were link type (tensor, cotensor or axiom), order of tentacles (left to right), shape (for (co)tensor links: two premises and one conclusion or one premise and two conclusions) and direction of information flow (main formula versus active formulas). At the same time, the data literals had to remain readable. Our solution was to distinguish the link types using a visually recognisable operator notation, where the left and right operands corresponded to the premises and conclusions of the link, respectively, and the left-to-right order within each operand was determined by the order of the list. The responsibility to distinguish the main formula from the active formulae as well as the responsibility to keep track of formula occurrences were deferred to an auxiliary type, \haskell/Tentacle/. The datastructure is summarized in Listing \ref{lst:link}; for full details, refer to \coderef{src/LG/Graph.hs}.
+
+\begin{listing}
+    \begin{haskellcode}
+        data Tentacle = MainT Identifier | Active Identifier
+        
+        --           premises      succedents
+        data Link = [Tentacle] :○: [Tentacle]  -- tensor
+                  | [Tentacle] :●: [Tentacle]  -- cotensor
+                  |  Tentacle  :|:  Tentacle   -- axiom
+    \end{haskellcode}
+    \caption{Datastructure for links.}
+    \label{lst:link}
+\end{listing}
+
+For theoretical and didactical reasons, a scheme of several graph types is described in \cite{mm12}. A \emph{proof structure} is the ``plain'' kind consisting of unannotated formulas connected by (co)tensor links. This would be the output of step 3 as numbered in Section \ref{sec:project}. In order to facilitate graph transformations for verification (step 4), an \emph{abstract proof structure} would be produced by erasing all formulas from the internal nodes. For term derivation (step 5) on the other hand, information would be added by converting all nodes of a proof structure to axiom-connected pairs and labeling all nodes with terms, resulting in a \emph{composition graph}.
+
+For a practical implementation, it is more convenient to start with a rich datastructure and ignore any unneeded information later on, than to start with a minimal datastructure and commit oneself to augmenting or converting the data when more information is required. Given that all necessary information to create a full-blown composition graph is available from the start, we decided to work with composition graphs exclusively. Our implementation, \haskell/CompositionGraph/, is a fairly typical linked (hyper)graph, in which identifiers are mapped to node containers, \haskell/NodeInfo/, which contain a formula, a term, an optional uplink and an optional downlink. Please refer to \coderef{src/LG/Graph.hs} for the details.
+
+
+\subsection{Term computation}
+
+As implemented, term computation from a \haskell/CompositionGraph/ takes two steps. First all rooted \haskell/Subnet/s, i.e. subgraphs containing only tensor and substitution links, are identified and collected in a new graph datastructure, \haskell/SubnetGraph/. In our implementation, this includes solitary nodes that don't have tensor or substitution links attached. The algorithm is summarized as follows.
+\begin{itemize}
+    \item While any unvisited nodes remain:\begin{enumerate}
+        \item Pick any unvisited node and add it to a new \haskell/Subnet/.
+        \item Consider attached \haskell/Link/s, if any:\label{alg:extract-recurse}\begin{itemize}
+            \item If tensor or substitution, add the neighbouring nodes to the current \haskell/Subnet/ and recurse with those nodes into \ref{alg:extract-recurse}, taking care not to follow the same link again.
+            \item Otherwise, define a boundary of the current \haskell/Subnet/.
+        \end{itemize}
+        \item Add the current \haskell/Subnet/ to the \haskell/SubnetGraph/ and regard all its nodes as visited.
+    \end{enumerate}
+\end{itemize}
+
+
 
 \section{Results}
 
@@ -89,9 +137,11 @@ We adopted the Cabal package format\footnote{link} from the beginning, in order 
 
 
 \appendix
-\section{Source code}
 
-\subsection{src/LG/Term.hs}
+\section{Source code}\label{code}
+
+\subsection{src/LG/Term.hs}\label{code:term}
+
 \haskellfile{../src/LG/Term.hs}
 
 \subsection{src/LG/Subnet.hs}
