@@ -22,7 +22,7 @@
 \usepackage{minted}
 \usemintedstyle{netprovetermstyle}
 \setminted{numbers=left,fontsize=\fontsize{9.2pt}{10pt}}
-\newmintinline[haskell]{haskell}{fontsize=\normal}
+\newmintinline[hs]{haskell}{fontsize=\normal}
 \newminted{haskell}{autogobble,frame=single,fontsize=\small}
 \newmintedfile{haskell}{}
 
@@ -57,13 +57,13 @@ After defining a core datastructure as the interface between components of the t
 Every programming project starts with a specification. We decided that our theorem prover should initially at least be able to execute the following steps:
 \begin{enumerate}
     \item let the user enter a sequence of words (unstructured), with the implicit request to prove that the words in the given order can form a grammatical sentence;
-    \item look up the words in a lexicon and retrieve their associated syntactic types (LG formulae);
-    \item generate a list with all possible proof structures for those formulae as detailed in \cite[p.~4--7]{mm12};
+    \item look up the words in a lexicon and retrieve their associated syntactic types (LG \hs/Formula/e);
+    \item generate a list with all possible proof structures for those \hs/Formula/e as detailed in \cite[p.~4--7]{mm12};
     \item filter the proof nets out of that list, applying the graph transformation rules described in \cite[p.~7--11]{mm12};
     \item compute all non-equivalent terms for each of those proof nets, following the procedure described in \cite[p.~21--26]{mm12};
     \item tell the user whether the given sequence of words was provable and if so, list the terms that were just computed as its possible interpretations.
 \end{enumerate}
-It was agreed that Maarten Trompper would implement step 3 \cite{maarten}, Niels Steenbergen would implement step 4 \cite{niels} and Julian Gonggrijp would implement step 5 (this paper). We first jointly designed the essential datastructures for formulae, terms and graphs and then each worked on our own components in parallel. Steps 1, 2 and 6 were left for later, to be taken up by whichever developer would turn out to finish his own component first. We also identified an extended ``wish list'' of features that should ultimately be included in a future version of our project:
+It was agreed that Maarten Trompper would implement step 3 \cite{maarten}, Niels Steenbergen would implement step 4 \cite{niels} and Julian Gonggrijp would implement step 5 (this paper). We first jointly designed the essential datastructures for \hs/Formula/e, terms and graphs and then each worked on our own components in parallel. Steps 1, 2 and 6 were left for later, to be taken up by whichever developer would turn out to finish his own component first. We also identified an extended ``wish list'' of features that should ultimately be included in a future version of our project:
 \begin{itemize}
     \item visualisation of graphs;
     \item a \emph{large} lexicon;
@@ -85,7 +85,7 @@ Steps 1, 2 and 6 from Section \ref{sec:project} will not be discussed here, beca
 
 Formulae and terms were implemented as tree-like datastructures with strict typing. Visually appealing value constructors were used when feasible. Integer identifiers were used to distinguish occurrences of the same formula or term. For the details, please refer to the code as it is self-explanatory: see \coderef{src/LG/Base.hs} and \coderef{src/LG/Term.hs} (the latter is also listed in Appendix \ref{code:term}).
 
-Implementation of the links was a bit more challenging, because several orthogonal kinds of information had to be encoded and it would be undesirable to write a separate constructor for each possible combination of options. The relevant aspects were link type (tensor, cotensor or axiom), order of tentacles (left to right), shape (for (co)tensor links: two premises and one conclusion or one premise and two conclusions) and direction of information flow (main formula versus active formulas). At the same time, the data literals had to remain readable. Our solution was to distinguish the link types using a visually recognisable operator notation, where the left and right operands corresponded to the premises and conclusions of the link, respectively, and the left-to-right order within each operand was determined by the order of the list. The responsibility to distinguish the main formula from the active formulae as well as the responsibility to keep track of formula occurrences were deferred to an auxiliary type, \haskell/Tentacle/. The datastructure is summarized in Listing \ref{lst:link}; for full details, refer to \coderef{src/LG/Graph.hs}.
+Implementation of the links was a bit more challenging, because several orthogonal kinds of information had to be encoded and it would be undesirable to write a separate constructor for each possible combination of options. The relevant aspects were link type (tensor, cotensor or axiom), order of tentacles (left to right), shape (for (co)tensor links: two premises and one conclusion or one premise and two conclusions) and direction of information flow (main formula versus active formulas). At the same time, the data literals had to remain readable. Our solution was to distinguish the link types using a visually recognisable operator notation, where the left and right operands corresponded to the premises and conclusions of the link, respectively, and the left-to-right order within each operand was determined by the order of the list. The responsibility to distinguish the main formula from the active formulae as well as the responsibility to keep track of formula occurrences were deferred to an auxiliary type, \hs/Tentacle/. The datastructure is summarized in Listing \ref{lst:link}; for full details, refer to \coderef{src/LG/Graph.hs}.
 
 \begin{listing}
     \begin{haskellcode}
@@ -102,23 +102,48 @@ Implementation of the links was a bit more challenging, because several orthogon
 
 For theoretical and didactical reasons, a scheme of several graph types is described in \cite{mm12}. A \emph{proof structure} is the ``plain'' kind consisting of unannotated formulas connected by (co)tensor links. This would be the output of step 3 as numbered in Section \ref{sec:project}. In order to facilitate graph transformations for verification (step 4), an \emph{abstract proof structure} would be produced by erasing all formulas from the internal nodes. For term derivation (step 5) on the other hand, information would be added by converting all nodes of a proof structure to axiom-connected pairs and labeling all nodes with terms, resulting in a \emph{composition graph}.
 
-For a practical implementation, it is more convenient to start with a rich datastructure and ignore any unneeded information later on, than to start with a minimal datastructure and commit oneself to augmenting or converting the data when more information is required. Given that all necessary information to create a full-blown composition graph is available from the start, we decided to work with composition graphs exclusively. Our implementation, \haskell/CompositionGraph/, is a fairly typical linked (hyper)graph, in which identifiers are mapped to node containers, \haskell/NodeInfo/, which contain a formula, a term, an optional uplink and an optional downlink. Please refer to \coderef{src/LG/Graph.hs} for the details.
+For a practical implementation, it is more convenient to start with a rich datastructure and ignore any unneeded information later on, than to start with a minimal datastructure and commit oneself to augmenting or converting the data when more information is required. Given that all necessary information to create a full-blown composition graph is available from the start, we decided to work with composition graphs exclusively. Our implementation, \hs/CompositionGraph/, is a fairly typical linked (hyper)graph, in which \hs/Identifier/s are mapped to node containers, \hs/NodeInfo/, which contain a \hs/Formula/, a \hs/Term/, an optional up\hs/Link/ and an optional down\hs/Link/. Please refer to \coderef{src/LG/Graph.hs} for the details.
 
 
 \subsection{Term computation}
 
-As implemented, term computation from a \haskell/CompositionGraph/ takes two steps. First all rooted \haskell/Subnet/s, i.e. subgraphs containing only tensor and substitution links, are identified and collected in a new graph datastructure, \haskell/SubnetGraph/. In our implementation, this includes solitary nodes that don't have tensor or substitution links attached. The algorithm is summarized as follows.
+As implemented, \hs/Term/ computation from a \hs/CompositionGraph/ takes two steps. First all rooted \hs/Subnet/s, i.e. subgraphs containing only tensor and substitution \hs/Link/s, are identified and collected in a new graph datastructure, \hs/SubnetGraph/. In our implementation, this includes solitary nodes that don't have tensor or substitution \hs/Link/s attached. The algorithm is summarized as follows.
 \begin{itemize}
     \item While any unvisited nodes remain:\begin{enumerate}
-        \item Pick any unvisited node and add it to a new \haskell/Subnet/.
-        \item Consider attached \haskell/Link/s, if any:\label{alg:extract-recurse}\begin{itemize}
-            \item If tensor or substitution, add the neighbouring nodes to the current \haskell/Subnet/ and recurse with those nodes into \ref{alg:extract-recurse}, taking care not to follow the same link again.
-            \item Otherwise, define a boundary of the current \haskell/Subnet/.
+        \item Pick an unvisited node and add it to a new \hs/Subnet/.
+        \item\label{alg:extract-recurse} Consider attached \hs/Link/s, if any:\begin{itemize}
+            \item If tensor or substitution, add the neighbouring nodes to the current \hs/Subnet/ and recurse with those nodes into (\ref{alg:extract-recurse}), taking care not to follow the same \hs/Link/ again.
+            \item Otherwise, consider the \hs/Link/ a boundary of the current \hs/Subnet/ and mark whether the \hs/Link/ is followable.
         \end{itemize}
-        \item Add the current \haskell/Subnet/ to the \haskell/SubnetGraph/ and regard all its nodes as visited.
+        \item Add the current \hs/Subnet/ to the \hs/SubnetGraph/ and regard all its nodes as visited.
     \end{enumerate}
 \end{itemize}
+The next step involves a recursive algorithm which, given a \hs/CompositionGraph/ $C$, a corresponding \hs/SubnetGraph/ $S$ and a target µ \hs/Link/ $T$ that should be followed last, computes all non-equivalent valid ways to arrive at a merged \hs/Subnet/ that covers $C$ entirely, starting from a particular \hs/Subnet/ $N$ and one of its followable \hs/Link/s $F$ in $S$. The summary of this algorithm is provided below.
+\begin{enumerate}
+    \item\label{alg:merge-recurse} \hfill \begin{enumerate}
+        \item Follow $F$ and merge $N$ with the \hs/Subnet/ that is attached to the other end of $F$, creating a new, larger \hs/Subnet/ $N'$. Create an updated version of $S$, $S'$.\begin{itemize}
+            \item If $F = T$:\begin{itemize}
+                \item If $N'$ has no followable \hs/Link/s in its boundary and it contains all nodes of $C$, return a singleton list of $N'$ as the result.
+                \item Otherwise, return the empty list as the result.
+            \end{itemize}
+            \item Otherwise, continue with the following steps.
+        \end{itemize}
+        \item\label{alg:expand-list} Determine which subset of followable \hs/Link/s should be expanded.\begin{itemize}
+            \item If the \hs/Term/ of $N'$ is a command:\begin{itemize}
+                \item If there are followable cotensor \hs/Link/s available: the cotensor \hs/Link/s.
+                \item Otherwise: the mu \hs/Link/s.
+            \end{itemize}
+            \item Otherwise: the command \hs/Link/s.
+        \end{itemize}
+        \item For each $F'$ in the subset of followable \hs/Link/s that was selected in the previous step, recurse into (\ref{alg:merge-recurse}) with $C$, $S'$, $L$, $N'$ and $F'$.
+        \item Return the concatenation of the return values from the previous step as the result.
+    \end{enumerate}
+\end{enumerate}
+The final step is completed by mapping the above algorithm over all \hs/Subnet/s that were extracted in the first step, concatenating the results and extracting the \hs/Term/s.
 
+Since the interior structure of a \hs/Subnet/ is not used in the above procedure, the \hs/Subnet/ datastructure only contains the set of node \hs/Identifier/s that belong to it, its computed \hs/Term/ and its set of followable \hs/Link/s. \hs/SubnetGraph/ is just a mapping from node \hs/Identifier/s to \hs/Subnet/s. Because of this, it can double as a convient lookup table to determine which nodes have been visited during the first step.
+
+As required by good Haskell fashion, the algorithms were implemented in lazy and purely functional style. The complete listings for the most relevant modules are included in the appendix, starting from page \pageref{code}.
 
 
 \section{Results}
@@ -141,7 +166,6 @@ As implemented, term computation from a \haskell/CompositionGraph/ takes two ste
 \section{Source code}\label{code}
 
 \subsection{src/LG/Term.hs}\label{code:term}
-
 \haskellfile{../src/LG/Term.hs}
 
 \subsection{src/LG/Subnet.hs}
