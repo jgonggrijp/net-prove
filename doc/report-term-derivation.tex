@@ -3,7 +3,6 @@
 \frenchspacing
 
 % \usepackage{amssymb}
-% \usepackage{amsmath}
 % \usepackage{stmaryrd}
 % \usepackage{graphicx}
 % \usepackage{latexsym}
@@ -25,6 +24,11 @@
 \newmintinline[hs]{haskell}{fontsize=\normal}
 \newminted{haskell}{autogobble,frame=single,fontsize=\small}
 \newmintedfile{haskell}{}
+
+\usepackage{amsmath,amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
 
 \newcommand{\nd}[2]{#1 \vdash #2}
 \newcommand{\Ra}{\rightarrow}
@@ -165,6 +169,62 @@ where \hs/k910/ is the target $\mu$ \hs/Link/. Please refer to the listing in Ap
 
 
 \subsection{Complexity analysis}
+
+The space and time complexities of the algorithms discussed in this paper are functions of the number of nodes in the input \hs/CompositionGraph/. Because of this, we will first prove that if a function is $O(f(N))$ with $N$ the number of nodes in the graph, the same function is also $O(f(M))$ with $M$ the combined number of atom occurrences in the proof formulas.
+\begin{theorem}\label{thm:nodes}
+    The number of nodes in a \hs/CompositionGraph/ is proportional to the combined number of atomic subformula occurrences of the hypotheses and conclusions for which it was constructed.
+\end{theorem}
+\begin{proof}
+    Each of the hypotheses and conclusions is a formula. An LG formula is a full binary expression tree, where the leafs are atom occurrences and the internal nodes are occurrences of the logical connectives. The number of internal nodes in a full binary tree\footnote{\url{http://xlinux.nist.gov/dads//HTML/fullBinaryTree.html}} is equal to the number of leafs minus one. A \hs/CompositionGraph/ contains one or two nodes for each atomic subformula occurrence and one or two nodes for each occurrence of a logical connective (this follows directly from Definition~3.2 in \cite[p.~23]{mm12}). Hence, the number of nodes in a connected \hs/CompositionGraph/ must be between one and four times the combined number of atom occurrences in its hypotheses and conclusions.
+\end{proof}
+
+\begin{theorem}
+    The time complexity of \hs/LG.SubnetGraph.extractSubnets/ is $\Theta(N \log N)$.
+\end{theorem}
+\begin{proof}
+    Each node in a \hs/CompositionGraph/ is visited once or twice, once because of the \hs/Map.foldrWithKey/ and potentially a second time if it was previously reached in a recursive call to \hs/LG.Subnet.expandTentacle'/. The first time a node is visited it adds $O(\log N)$ to the total running time because the node has to be inserted in the \hs/SubnetGraph/ which is an instance of \hs/Data.Map/, which is implemented as a balanced binary search tree\footnote{\url{http://hackage.haskell.org/package/containers-0.5.6.3/docs/Data-Map-Lazy.html}}. Hence, the total running time is $\Theta(N)\times O(\log N) = \Theta(N\log N)$.
+\end{proof}
+
+\begin{theorem}
+    The space complexity of \hs/LG.SubnetGraph.extractSubnets/ is $\Theta(N)$.
+\end{theorem}
+\begin{proof}
+    The accumulator for \hs/LG.SubnetGraph.extractSubnets/ consists of a list of \hs/Subnet/s and a \hs/SubnetGraph/. These datastructures grow monotonically until the end of the fold. In their final state, their combined size is $\Theta(N)$ because each node \hs/Identifier/ occurs in exactly one \hs/Subnet/ and has exactly one entry in the \hs/SubnetGraph/. The \hs/Subnet/s themselves are stored only once in memory and cannot be greater in number than the nodes of the \hs/CompositionGraph/.
+    
+    Recursion at any point of execution of the algorithm cannot run deeper than a constant factor times the number of nodes in the \hs/CompositionGraph/. Other than the accumulated \hs/Subnet/s and \hs/SubnetGraph/, every step in the algorithm requires only constant space. Hence, the size of the accumulator completely determines the space complexity of the algorithm.
+\end{proof}
+
+\begin{theorem}\label{thm:outwards-links1}
+    A \hs/Subnet/ cannot have more outwards followable \hs/Link/s than nodes.
+\end{theorem}
+\begin{proof}
+    A node may be attached to at most two \hs/Link/s, at most one of which may be an axiom \hs/Link/ (this follows directly from  Definition~3.2 in \cite[p.~23]{mm12}). Hence, if a \hs/Subnet/ consists of a single node, it can have at most one outwards followable command or $\mu$ \hs/Link/. If there is a non-axiom \hs/Link/, it cannot be outwards followable because it must be either tensor, which is never outwards followable, or cotensor, which cannot be outwards followable because it would need to be attached to a second node in the same \hs/Subnet/. So a single-node \hs/Subnet/ cannot have more than one outwards followable \hs/Link/.
+    
+    In a \hs/Subnet/ with multiple nodes, each node can be attached to at most one outwards followable \hs/Link/ because it needs to be connected with the rest of the \hs/Subnet/ through the other \hs/Link/. An apparent exception to this rule occurs if the node is attached to an outwards followable axiom \hs/Link/ on one side and to an active \hs/Tentacle/ of a cotensor \hs/Link/ on the other side, where the cotensor \hs/Link/ has its other active \hs/Tentacle/ in the same \hs/Subnet/ while its main \hs/Tentacle/ is attached to an exterior node. In this case, however, the cotensor \hs/Link/ is shared with another node which must be connected with the rest of the same \hs/Subnet/ through a substitution or tensor \hs/Link/, so the amortized number of outwards followable \hs/Link/s per node is still not greater than one. In conclusion, there cannot be more outwards followable \hs/Link/s than nodes, regardless of the size of the \hs/Subnet/.
+\end{proof}
+
+\begin{theorem}\label{thm:inwards-links}
+    In a \hs/SubnetGraph/ that corresponds to a proof net, each \hs/Subnet/ can have at most one inwards followable \hs/Link/.
+\end{theorem}
+\begin{proof}
+    If this would not be the case, \hs/Term/ computation could not work because the same \hs/Subnet/ would have to be merged into another \hs/Subnet/ multiple times. It has been proven before that there is at least one \hs/Term/ for each proof net \cite[p.~11]{mm12}, so this would be a contradiction.
+\end{proof}
+
+\begin{corollary}\label{crly:outwards-links2}
+    From Theorem~\ref{thm:inwards-links} it follows that a \hs/Subnet/ cannot have more outwards followable \hs/Link/s than there are other \hs/Subnet/s in the \hs/SubnetGraph/.
+\end{corollary}
+
+\begin{corollary}\label{crly:branch-factor}
+    From Theorem~\ref{thm:outwards-links1} and Corollary~\ref{crly:outwards-links2} it follows that the branching factor for \hs/LG.SubnetGraph.validExtensions/ is potentially greatest when the number of nodes in a \hs/Subnet/ and the numbers of nodes in its neighbours are each roughly equal to the square root of the number of nodes in the entire \hs/CompositionGraph/. In that case the branching factor itself could be close to the square root of the number of nodes in the \hs/CompositionGraph/.
+\end{corollary}
+
+\begin{conjecture}
+    Time complexity of \hs/LG.SubnetGraph.validExtensions/ might be exponential in the worst case but polynomial in the average case.
+\end{conjecture}
+\noindent\emph{Motivation.}\hspace{6pt}The recursion depth might be close to $N$ in the worst case, if there are many small \hs/Subnets/. From Corollary~\ref{crly:branch-factor} the branching factor would be expected to stay under $\sqrt{N}$ on average, but since the recursion depth goes into the exponent, the total number of calls would still be $O(\sqrt{N}^N) = O(N^{\frac{N}{2}})$. However, given that there are generally few \hs/Term/s for a proof net, the recursion tree might consist mostly of unbranched recursion sequences in the most likely case, with many dead ends and only a few narrow branching points.
+
+
+
 
 \subsection{Issues}\label{sub:issues}
 
