@@ -148,7 +148,21 @@ As required by good Haskell fashion, the algorithms were implemented in lazy and
 
 \section{Results}
 
-All of the steps for the initial project specification listed in Section \ref{sec:project} have been realised. However, a couple of issues remain, one of which prevents any terms from being displayed to the user in step 6. The issues are described on page \pageref{sub:issues}.
+All of the steps for the initial project specification listed in Section \ref{sec:project} have been realised. However, a number of issues remain, one of which prevents any \hs/Term/s from being displayed to the user in step 6. The issues are described on page \pageref{sub:issues}. \hs/Term/ computation by itself appears to work flawlessly.
+
+In order to verify the \hs/Term/ computation, the example in Figure 18 from \cite[p.~28]{mm12} was hand-coded to our Haskell datastructures in \coderef{src/LG/TestGraph.hs}. Negative polarity was assumed for the $s$ atom and positive polarity was assumed for all other atoms. This \hs/testGraph/ includes all types of \hs/Link/s except for substitution \hs/Link/s, as well as a branching point for the computation.
+
+Our algorithm correctly derived both possible \hs/Term/s for this graph and nothing else. The \hs/testGraph/ was then modified to include two substitution \hs/Link/s as well. The latter version is listed in Appendix \ref{code:test} on page \pageref{code:test} and onwards, the former version may be retrieved from commit \href{https://github.com/jgonggrijp/net-prove/blob/68f84860f4f9535e15a12161f5120fb25f6b4219/src/LG/TestGraph.hs}{\texttt{68f84860f4f9}}. The algorithm again correctly derived both possible terms, thus also demonstrating that the algorithm can operate correctly regardless of whether substitution \hs/Link/s are collapsed in advance or not.
+
+The reader may repeat the verification for herself by executing the following commands from the \texttt{src} directory:
+\begin{verbatim}
+    ghci LG/Subnet LG/SubnetGraph LG/TestGraph
+    :m +LG.SubnetGraph 
+    :m +LG.TestGraph
+    mapM_ print $ termsFromProofnet testGraph k910
+\end{verbatim}
+where \hs/k910/ is the target $\mu$ \hs/Link/. Please refer to the listing in Appendix \ref{code:test} for a full overview of constants that are available for testing.
+
 
 \subsection{Complexity analysis}
 
