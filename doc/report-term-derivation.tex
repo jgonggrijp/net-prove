@@ -194,15 +194,6 @@ The space and time complexities of the algorithms discussed in this paper are fu
     Recursion at any point of execution of the algorithm cannot run deeper than a constant factor times the number of nodes in the \hs/CompositionGraph/. Other than the accumulated \hs/Subnet/s and \hs/SubnetGraph/, every step in the algorithm requires only constant space. Hence, the size of the accumulator completely determines the space complexity of the algorithm.
 \end{proof}
 
-\begin{theorem}\label{thm:outwards-links1}
-    A \hs/Subnet/ cannot have more outwards followable \hs/Link/s than nodes.
-\end{theorem}
-\begin{proof}
-    A node may be attached to at most two \hs/Link/s, at most one of which may be an axiom \hs/Link/ (this follows directly from  Definition~3.2 in \cite[p.~23]{mm12}). Hence, if a \hs/Subnet/ consists of a single node, it can have at most one outwards followable command or $\mu$ \hs/Link/. If there is a non-axiom \hs/Link/, it cannot be outwards followable because it must be either tensor, which is never outwards followable, or cotensor, which cannot be outwards followable because it would need to be attached to a second node in the same \hs/Subnet/. So a single-node \hs/Subnet/ cannot have more than one outwards followable \hs/Link/.
-    
-    In a \hs/Subnet/ with multiple nodes, each node can be attached to at most one outwards followable \hs/Link/ because it needs to be connected with the rest of the \hs/Subnet/ through the other \hs/Link/. An apparent exception to this rule occurs if the node is attached to an outwards followable axiom \hs/Link/ on one side and to an active \hs/Tentacle/ of a cotensor \hs/Link/ on the other side, where the cotensor \hs/Link/ has its other active \hs/Tentacle/ in the same \hs/Subnet/ while its main \hs/Tentacle/ is attached to an exterior node. In this case, however, the cotensor \hs/Link/ is shared with another node which must be connected with the rest of the same \hs/Subnet/ through a substitution or tensor \hs/Link/, so the amortized number of outwards followable \hs/Link/s per node is still not greater than one. In conclusion, there cannot be more outwards followable \hs/Link/s than nodes, regardless of the size of the \hs/Subnet/.
-\end{proof}
-
 \begin{theorem}\label{thm:inwards-links}
     In a \hs/SubnetGraph/ that corresponds to a proof net, each \hs/Subnet/ can have at most one inwards followable \hs/Link/.
 \end{theorem}
@@ -210,20 +201,31 @@ The space and time complexities of the algorithms discussed in this paper are fu
     If this would not be the case, \hs/Term/ computation could not work because the same \hs/Subnet/ would have to be merged into another \hs/Subnet/ multiple times. It has been proven before that there is at least one \hs/Term/ for each proof net \cite[p.~11]{mm12}, so this would be a contradiction.
 \end{proof}
 
-\begin{corollary}\label{crly:outwards-links2}
-    From Theorem~\ref{thm:inwards-links} it follows that a \hs/Subnet/ cannot have more outwards followable \hs/Link/s than there are other \hs/Subnet/s in the \hs/SubnetGraph/.
-\end{corollary}
+\begin{theorem}\label{thm:tree}
+    A \hs/SubnetGraph/ that corresponds to a proof net is a tree.
+\end{theorem}
+\begin{proof}
+    From Theorem~\ref{thm:inwards-links} it follows that the graph must be a forest. Since it is possible to compute a term by starting at one \hs/Subnet/ and visiting all others, the graph must be connected. Hence, the graph is a forest with only a single tree.
+\end{proof}
 
-\begin{corollary}\label{crly:branch-factor}
-    From Theorem~\ref{thm:outwards-links1} and Corollary~\ref{crly:outwards-links2} it follows that the branching factor for \hs/LG.SubnetGraph.validExtensions/ is potentially greatest when the number of nodes in a \hs/Subnet/ and the numbers of nodes in its neighbours are each roughly equal to the square root of the number of nodes in the entire \hs/CompositionGraph/. In that case the branching factor itself could be close to the square root of the number of nodes in the \hs/CompositionGraph/.
-\end{corollary}
+\begin{theorem}\label{thm:exponential}
+    The time complexity of \hs/LG.SubnetGraph.validExtensions/ is $O(Nb^{\frac{N}{b}})$ with $b$ the average branching factor of the \hs/SubnetGraph/.
+\end{theorem}
+\begin{proof}
+    In the worst case, \hs/validExtensions/ will entirely traverse the \hs/SubnetGraph/ in all possible ways, which by Theorem~\ref{thm:tree} must be a tree. The number of possible ways to traverse a tree is $b^n$, with $b$ the average branching factor and $n$ the number of internal nodes. $n$, in turn, is proportional to the total number of nodes $N$ divided by $b$. Every tree traversal includes a call to \hs/validExtensions/ for each of the $N$ nodes. The number of \hs/Subnet/s in the tree is not necessarily less than proportional to the number of nodes in the corresponding \hs/CompositionGraph/, so $O(Nb^{\frac{N}{b}})$ expresses the time complexity for the algorithm also when $N$ indicates the number of nodes.
+\end{proof}
 
 \begin{conjecture}
-    Time complexity of \hs/LG.SubnetGraph.validExtensions/ might be exponential in the worst case but polynomial in the average case.
+    The time complexity of \hs/LG.SubnetGraph.validExtensions/ might be polynomial in the average case.
 \end{conjecture}
-\noindent\emph{Motivation.}\hspace{6pt}The recursion depth might be close to $N$ in the worst case, if there are many small \hs/Subnets/. From Corollary~\ref{crly:branch-factor} the branching factor would be expected to stay under $\sqrt{N}$ on average, but since the recursion depth goes into the exponent, the total number of calls would still be $O(\sqrt{N}^N) = O(N^{\frac{N}{2}})$. However, given that there are generally few \hs/Term/s for a proof net, the recursion tree might consist mostly of unbranched recursion sequences in the most likely case, with many dead ends and only a few narrow branching points.
+\noindent\emph{Motivation.}\hspace{6pt}Given that there are generally few \hs/Term/s for a proof net, the \hs/SubnetGraph/ tree might contain only a few branching points in most cases. In that case, the majority of \hs/Subnet/s belongs to subgraphs where the branching factor $b$ from Theorem~\ref{thm:exponential} degrades to 1. The overall complexity then becomes $N$ times something that is not much larger, and probably even smaller, than $N$.
 
-
+\begin{theorem}
+    The space complexity of \hs/LG.SubnetGraph.validExtensions/ is $\Theta(N)$.
+\end{theorem}
+\begin{proof}
+    
+\end{proof}
 
 
 \subsection{Issues}\label{sub:issues}
