@@ -178,14 +178,14 @@ The space and time complexities of the algorithms discussed in this paper are fu
     Each of the hypotheses and conclusions is a formula. An LG formula is a full binary expression tree, where the leafs are atom occurrences and the internal nodes are occurrences of the logical connectives. The number of internal nodes in a full binary tree\footnote{\url{http://xlinux.nist.gov/dads//HTML/fullBinaryTree.html}} is equal to the number of leafs minus one. A \hs/CompositionGraph/ contains one or two nodes for each atomic subformula occurrence and one or two nodes for each occurrence of a logical connective (this follows directly from Definition~3.2 in \cite[p.~23]{mm12}). Hence, the number of nodes in a connected \hs/CompositionGraph/ must be between one and four times the combined number of atom occurrences in its hypotheses and conclusions.
 \end{proof}
 
-\begin{theorem}
+\begin{theorem}\label{thm:netgraph-time}
     The time complexity of \hs/LG.SubnetGraph.extractSubnets/ is $\Theta(N \log N)$.
 \end{theorem}
 \begin{proof}
     Each node in a \hs/CompositionGraph/ is visited once or twice, once because of the \hs/Map.foldrWithKey/ and potentially a second time if it was previously reached in a recursive call to \hs/LG.Subnet.expandTentacle'/. The first time a node is visited it adds $O(\log N)$ to the total running time because the node has to be inserted in the \hs/SubnetGraph/ which is an instance of \hs/Data.Map/, which is implemented as a balanced binary search tree\footnote{\url{http://hackage.haskell.org/package/containers-0.5.6.3/docs/Data-Map-Lazy.html}}. Hence, the total running time is $\Theta(N)\times O(\log N) = \Theta(N\log N)$.
 \end{proof}
 
-\begin{theorem}
+\begin{theorem}\label{thm:netgraph-space}
     The space complexity of \hs/LG.SubnetGraph.extractSubnets/ is $\Theta(N)$.
 \end{theorem}
 \begin{proof}
@@ -215,17 +215,30 @@ The space and time complexities of the algorithms discussed in this paper are fu
     In the worst case, \hs/validExtensions/ will entirely traverse the \hs/SubnetGraph/ in all possible ways, which by Theorem~\ref{thm:tree} must be a tree. The number of possible ways to traverse a tree is $b^n$, with $b$ the average branching factor and $n$ the number of internal nodes. $n$, in turn, is proportional to the total number of nodes $N$ divided by $b$. Every tree traversal includes a call to \hs/validExtensions/ for each of the $N$ nodes. The number of \hs/Subnet/s in the tree is not necessarily less than proportional to the number of nodes in the corresponding \hs/CompositionGraph/, so $O(Nb^{\frac{N}{b}})$ expresses the time complexity for the algorithm also when $N$ indicates the number of nodes.
 \end{proof}
 
-\begin{conjecture}
+\begin{conjecture}\label{cnj:polynomial}
     The time complexity of \hs/LG.SubnetGraph.validExtensions/ might be polynomial in the average case.
 \end{conjecture}
-\noindent\emph{Motivation.}\hspace{6pt}Given that there are generally few \hs/Term/s for a proof net, the \hs/SubnetGraph/ tree might contain only a few branching points in most cases. In that case, the majority of \hs/Subnet/s belongs to subgraphs where the branching factor $b$ from Theorem~\ref{thm:exponential} degrades to 1. The overall complexity then becomes $N$ times something that is not much larger, and probably even smaller, than $N$.
+\noindent\emph{Motivation.}\hspace{6pt}Given that there are generally few \hs/Term/s for a proof net, the \hs/SubnetGraph/ tree might contain only a few branching points in most cases. If so, the majority of \hs/Subnet/s belongs to subgraphs where the branching factor $b$ from Theorem~\ref{thm:exponential} degrades to 1. The overall complexity then becomes $N$ times something that is not much larger, and probably even smaller, than $N$.
 
-\begin{theorem}
-    The space complexity of \hs/LG.SubnetGraph.validExtensions/ is $\Theta(N)$.
+\begin{theorem}\label{thm:extend-space}
+    The space complexity of \hs/LG.SubnetGraph.validExtensions/ is $O(N^2)$.
 \end{theorem}
 \begin{proof}
-    
+    A single call to \hs/validExtensions/ requires a \hs/SubnetGraph/, which takes $O(N)$ space (Theorem~\ref{thm:netgraph-space}). Because of recursion, up to $O(N)$ different, progressively merged versions of the \hs/SubnetGraph/ may have to be kept in memory at the same time.
 \end{proof}
+
+\begin{theorem}\label{thm:deciding-complexity}
+    Time and space complexity of \hs/Term/ computation as a whole are determined by the complexity of \hs/LG.SubnetGraph.validExtensions/.
+\end{theorem}
+\begin{proof}
+    \hs/Term/ computation as a whole consists of a single call to \hs/extractSubnets/, followed by a call to \hs/validExtensions/ for each \hs/Subnet/ of the result. Given Theorems~\ref{thm:netgraph-time},~\ref{thm:exponential} and despite Conjecture~\ref{cnj:polynomial}, time complexity for a single call to \hs/validExtensions/ already wins from the time complexity of \hs/extractSubnets/. The multiple calls to \hs/validExtensions/ do not add up to a complexity greater than $O(Nb^{\frac{N}{b}})$, because all calls except for one are run on a subtree of the \hs/SubnetGraph/. A subtree contains only $1/b$ times as many internal nodes as the complete tree, so the exponential in the number of possible subtree traversals is also just a fraction of the exponential for the complete tree and the complexity for the complete tree will win from the complexity of all its subtrees combined. The exception is the degenerate case from Conjecture~\ref{cnj:polynomial}, where the summation of $O(N)$ close--to--linear invocations may lift the overall complexity to a one degree higher order polynomial. Still, the overall time complexity for \hs/Term/ computation as a whole would be determined by the second stage only.
+    
+    The same is true of the space complexity, where the complexity for \hs/extractSubnets/ (Theorem~\ref{thm:netgraph-space}) is already beaten by the complexity for a single invocation of \hs/validExtensions/ (Theorem~\ref{thm:extend-space}). Again, the multiple invocations of the latter do not add up to a greater complexity, in this case because the stack does not need to be preserved between the invocations.
+\end{proof}
+
+\begin{corollary}
+    From Theorem~\ref{thm:deciding-complexity} it follows that the overal time complexity for \hs/Term/ computation is $O(Nb^{\frac{N}{b}})$ with $b$ the average branching factor of the \hs/SubnetGraph/. The overall space complexity is $O(N^2)$.
+\end{corollary}
 
 
 \subsection{Issues}\label{sub:issues}
