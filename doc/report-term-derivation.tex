@@ -51,7 +51,7 @@
 
 The Lambek-Grishin calculus (LG) is an extension of Lambek calculus that has proven itself in the analysis of several context-sensitive natural language phenomena. sLG, a display sequent calculus for LG, has been shown to be tractable. \cite{m09} However, it allows for spurious ambiguity, requires explicit manipulation of sequents that are equivalent under structural rules and depends on a predetermined sequent structure. For the latter reason, sLG alone cannot be used to parse a sentence. Moortgat and Moot (2012) provided a proof net formalism for LG that solves all of these issues. \cite{mm12}
 
-Automated theorem provers tend to work in ``sequent style'', searching top-down by backwards chaining. A theorem prover based on proofnets could work bottom-up instead and compute the proof structure---hence, parse a sentence---as a byproduct. To our knowledge, such a theorem prover was not yet built for LG. We decided to fill this gap using Haskell. The context for this endeavour was the 2014--2015 Master's course \emph{Logic and Language} (LoLa), taught by Prof. dr. Michael Moortgat at Utrecht University\footnote{link}.
+Automated theorem provers tend to work in ``sequent style'', searching top-down by backwards chaining. A theorem prover based on proofnets could work bottom-up instead and compute the proof structure---hence, parse a sentence---as a byproduct. To our knowledge, such a theorem prover was not yet built for LG. We decided to fill this gap using Haskell. The context for this endeavour was the 2014--2015 Master's course \emph{Logic and Language} (LoLa), taught by Prof. dr. Michael Moortgat at Utrecht University\footnote{\url{http://phil.uu.nl/llc/2014/}}.
 
 After defining a core datastructure as the interface between components of the theorem prover, we devided the remaining work into three subprojects that could be developed in parallel. Term derivation, the topic of the current paper, is one of those three subprojects. By the Curry-Howard isomorphism, every proof has a compact, algebraic representation called a term; since a proof net is also a proof, it follows that it can be represented with a term. The task of the author was to realise this for our Haskell implementation of LG proof nets. The term would then be available as a universal interface for further use; as a convenient proof representation to the human reader, as a source from which to reconstruct the display sequent version of the proof, or as the input material to a homomorphic mapping to another calculus in a categorial grammar setup. In particular, a CPS translation to MILL/LP has been shown to be worthwhile when LG is the source calculus. \cite{mm12}
 
@@ -67,17 +67,17 @@ Every programming project starts with a specification. We decided that our theor
     \item compute all non-equivalent terms for each of those proof nets, following the procedure described in \cite[p.~21--26]{mm12};
     \item tell the user whether the given sequence of words was provable and if so, list the terms that were just computed as its possible interpretations.
 \end{enumerate}
-It was agreed that Maarten Trompper would implement step 3 \cite{maarten}, Niels Steenbergen would implement step 4 \cite{niels} and Julian Gonggrijp would implement step 5 (this paper). We first jointly designed the essential datastructures for \hs/Formula/e, terms and graphs and then each worked on our own components in parallel. Steps 1, 2 and 6 were left for later, to be taken up by whichever developer would turn out to finish his own component first. We also identified an extended ``wish list'' of features that should ultimately be included in a future version of our project:
+It was agreed that Maarten Trompper would implement step 3 \cite{maarten}, Niels Steenbergen would implement step 4 \cite{niels} and Julian Gonggrijp would implement step 5 (this paper). We first jointly designed the essential datastructures for formulae, terms and graphs and then each worked on our own components in parallel. Steps 1, 2 and 6 were left for later, to be taken up by whichever developer would turn out to finish his own component first. We also identified an extended ``wish list'' of features that should ultimately be included in a future version of our project:
 \begin{itemize}
     \item visualisation of graphs;
     \item a \emph{large} lexicon;
     \item CPS translation of the terms from step 5 to MILL/LP for the derivational interpretation and thence to IL for the lexical interpretation, as explained in \cite[p.~14,19--21]{mm12};
     \item reconstruction of corresponding sequent-style proofs out of the terms from step 5, for sLG \cite[p.~3--4]{mm12} and fLG \cite[p.~15--18]{mm12};
-    \item abstractions of the datastructures and algorithms to facilitate reuse of the proof net based approach for other logical calculi, for example LP with modal operators \cite{}.
+    \item abstractions of the datastructures and algorithms to facilitate reuse of the proof net based approach for other logical calculi, for example LP with modal operators \cite{qm02}.
 \end{itemize}
 In anticipation of the latter wish item, we allocated a ``Framework'' directory in advance.
 
-We adopted the Cabal package format\footnote{link} from the beginning, in order to accomodate for future code reuse and deployment. Our project source code is freely available under the terms of the BSD license\footnote{link}, on GitHub\footnote{link, link, link\label{ftn:github}}. Note that at the time of writing, there are slightly different versions of the code on different branches; a version in which all the steps numbered above are combined may be found on \texttt{jgonggrijp/merge-trial}. The next section will assume \texttt{jgonggrijp/report}, which contains additional comments but lacks the components implemented by Niels Steenbergen and Maarten Trompper.
+We adopted the Cabal package format\footnote{\url{https://www.haskell.org/cabal/}} from the beginning, in order to accomodate for future code reuse and deployment. Our project source code is freely available under the terms of the BSD license\footnote{\url{http://opensource.org/licenses/BSD-3-Clause}}, on GitHub\footnote{\url{https://github.com/jgonggrijp/net-prove}, \url{https://github.com/cowl/net-prove}, \url{https://github.com/digitalheir/net-prove}\label{ftn:github}}. Note that at the time of writing, there are slightly different versions of the code on different branches; a version in which all the steps numbered above are combined may be found on \texttt{jgonggrijp/merge-trial}. The next section will assume \texttt{jgonggrijp/report}, which contains additional comments but lacks the components implemented by Niels Steenbergen and Maarten Trompper.
 
 
 \section{Implementation}
@@ -122,7 +122,7 @@ As implemented, \hs/Term/ computation from a \hs/CompositionGraph/ takes two ste
         \item Add the current \hs/Subnet/ to the \hs/SubnetGraph/ and regard all its nodes as visited.
     \end{enumerate}
 \end{itemize}
-The next step involves a recursive algorithm which, given a \hs/CompositionGraph/ $C$, a corresponding \hs/SubnetGraph/ $S$ and a target µ \hs/Link/ $T$ that should be followed last, computes all non-equivalent valid ways to arrive at a merged \hs/Subnet/ that covers $C$ entirely, starting from a particular \hs/Subnet/ $N$ and one of its followable \hs/Link/s $F$ in $S$. The summary of this algorithm is provided below.
+The next step involves a recursive algorithm which, given a \hs/CompositionGraph/ $C$, a corresponding \hs/SubnetGraph/ $S$ and a target $\mu$~\hs/Link/ $T$ that should be followed last, computes all non-equivalent valid ways to arrive at a merged \hs/Subnet/ that covers $C$ entirely, starting from a particular \hs/Subnet/ $N$ and one of its followable \hs/Link/s $F$ in $S$. The summary of this algorithm is provided below.
 \begin{enumerate}
     \item\label{alg:merge-recurse} \hfill \begin{enumerate}
         \item Follow $F$ and merge $N$ with the \hs/Subnet/ that is attached to the other end of $F$, creating a new, larger \hs/Subnet/ $N'$. Create an updated version of $S$, $S'$.\begin{itemize}
@@ -277,6 +277,34 @@ There is an additional idea that might be worth exploring: currently, the term c
 
 
 \begin{thebibliography}{9}
+    \bibitem{m09}
+        Michael Moortgat (2009).
+        \emph{Symmetric Categorial Grammar}.
+        Journal of Philosophical Logic,
+        vol.~38, no.~6, pp.~681--710.
+    
+    \bibitem{mm12}
+        Michael Moortgat and Richard Moot (2012).
+        ``Proofs nets and the categorial flow of information''.
+        In: \emph{Logic and Interactive Rationality. Yearbook 2011},
+        pp.~270--302.
+    
+    \bibitem{maarten}
+        Maarten Trompper (2015).
+        \emph{Unfolding formulae in proof nets: An implementation in Haskell}.
+        Paper for the Master's course ``Logic and Language'',
+        Utrecht University, 2014--2015.
+    
+    \bibitem{niels}
+        Niels Steenbergen (2015).
+        \emph{Proof net validation for Lambek-Grishin calculus}.
+        Paper for the Master's course ``Logic and Language'',
+        Utrecht University, 2014--2015.
+    
+    \bibitem{qm02}
+        Richard Moot and Quintijn Puite (2002).
+        \emph{Proof Nets for the Multimodal Lambek Calculus}.
+        Studia Logica, vol.~71, pp.~415--442.
 \end{thebibliography}
 
 
