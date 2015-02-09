@@ -248,8 +248,8 @@ We finally arrive at the complexity for the \hs/Term/ computation algorithm as a
 
 At the time of writing, the following issues apply to the combined project on the \texttt{jgonggrijp/merge-trial} branch.
 \begin{itemize}
-    \item One of the essential rules for unfolding hypotheses and conclusions was left entirely implicit in \cite{mm12}, being that the hypotheses and conclusions of the final composition graph should be value nodes even if the formula is negative. The only way to discover this rule was by closely studying Figure~18. As a result, Julian~Gonggrijp was aware of the rule but Maarten~Trompper, who would have to implement it, was not, so the rule was not included in step~3 as numbered in Section~\ref{sec:project}. Thus, \hs/CompositionGraph/s are generated for which no \hs/Term/ can be computed even though the proof net validation from step~4 may succeed.
-    \item Respecting the order of the words provided by the user in step~1 while constructing composition graphs in step~3 turned out to be a very hard problem and we still have not solved it. As a result,  our theorem prover attempts to generate \hs/CompositionGraph/s for all possible permutations of the provided words, rather than only for the given order of those words.
+    \item One of the essential rules for unfolding hypotheses and conclusions was left entirely implicit in \cite{mm12}, being that the hypotheses and conclusions of the final composition graph should be value nodes even if the formula is negative. The only way to discover this rule was by closely studying Figure~18. As a result Maarten~Trompper was not aware of the rule, so it was not included in step~3 as numbered in Section~\ref{sec:project}. Thus, \hs/CompositionGraph/s are generated for which no \hs/Term/ can be computed even though the proof net validation from step~4 may succeed.
+    \item Respecting the order of the words provided by the user in step~1 while constructing composition graphs in step~3 turned out to be a hard problem and we have not solved it yet. As a result,  our theorem prover attempts to generate \hs/CompositionGraph/s for all possible permutations of the provided words, rather than only for the given order of those words. For further details see \cite{maarten}.
 \end{itemize}
 These issues need to be addressed.
 
@@ -264,7 +264,16 @@ The former two issues need not be addressed because of the non-existent or irrel
 
 \section{Conclusion}
 
+Despite the issues listed in Section~\ref{sub:issues}, implementation of the theorem prover as set out in Section~\ref{sec:project} has been mostly successful. The issues are solvable, so it is likely that this will soon be the first automated bottom-up theorem prover and sentence parser for LG.
+
+The term computation algorithm works correctly. While its complexity is exponential in the worst case, there is good hope that it will be polynomial in the average case.
+
+
 \subsection{Future work}
+
+All three project collaborators have expressed the wish to continue working on the theorem prover. First follow--up effort will be directed at addressing the outstanding issues. After that, we can work towards completing our ``wish list'' from Section~\ref{sec:project}.
+
+There is an additional idea that might be worth exploring: currently, the term computation algorithm has the precondition that the input \hs/CompositionGraph/ corresponds to a proof net as verified by step~4. However, with additional safety checks it may be possible to make it robust against inputs in which this is not the case. Doing so would essentially collapse the proof net verifaction and term computation into a single algorithm, where invalid \hs/CompositionGraph/s as input simply yield the empty list as output. The unification-based approach taken by Niels Steenbergen for the proof net verification \cite{niels} may be reusable for this purpose.
 
 
 \begin{thebibliography}{9}
