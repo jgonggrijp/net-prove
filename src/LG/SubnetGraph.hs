@@ -60,7 +60,8 @@ extractSubnets graph = Map.foldrWithKey extract ([], Map.empty) graph
     CompositionGraph, and which uses the core logic from LG.Subnet
     internally.
 -}
-extractSubnets' :: CompositionGraph -> Identifier -> NodeInfo -> Extraction -> Extraction
+extractSubnets' :: CompositionGraph -> Identifier -> NodeInfo
+                -> Extraction -> Extraction
 extractSubnets' graph index node accum@(subs, subsGraph)
     | Map.member index subsGraph = accum
     | otherwise                  = ((newsub:subs), subsGraph')
@@ -145,14 +146,16 @@ extendMu net sgraph cgraph target link@(t1 :|: t2)
         update i s | Set.member i mergeNodes = mergeNet
                    | otherwise = s
         sgraph' = Map.mapWithKey update sgraph
-        finalMu | Set.null mus' && (Set.size mergeNodes == Map.size cgraph) = [mergeNet]
+        mergeComplete = Set.size mergeNodes == Map.size cgraph
+        finalMu | Set.null mus' && mergeComplete = [mergeNet]
                 | otherwise     = []
 
 {-
     extendCommand is very similar to extendMu, but without the
     special case.
 -}
-extendCommand :: Subnet -> SubnetGraph -> CompositionGraph -> Link -> Link -> [Subnet]
+extendCommand :: Subnet -> SubnetGraph -> CompositionGraph
+              -> Link -> Link -> [Subnet]
 extendCommand net sgraph cgraph target link@(t1 :|: t2) = extensions
   where (Subnet ourNodes ourTerm coms cots mus) = net
         (i1, i2) = (referee t1, referee t2)
@@ -178,7 +181,8 @@ extendCommand net sgraph cgraph target link@(t1 :|: t2) = extensions
     which order the (co)variables corresponding to those tentacles
     should appear in the resulting Cut term.
 -}
-extendCotensor :: Subnet -> SubnetGraph -> CompositionGraph -> Link -> Link -> [Subnet]
+extendCotensor :: Subnet -> SubnetGraph -> CompositionGraph
+               -> Link -> Link -> [Subnet]
 extendCotensor net sgraph cgraph target link | bothActiveIncluded = extensions
                                              | otherwise          = []
   where (Just tm :-: [t1, t2]) = transpose link
