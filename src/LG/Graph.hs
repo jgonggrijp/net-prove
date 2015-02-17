@@ -147,10 +147,12 @@ cyclic g | Map.null g     = False
 isTree :: CompositionGraph -> Bool
 isTree = not . cyclic
 
+newtype LeafNode = Leaf (Occurrence NodeInfo) deriving (Eq, Ord)
+
 -- Return all leaf nodes for given composition graph
 -- Complexity: O(n)
-leafNodes :: CompositionGraph -> [Occurrence NodeInfo]
-leafNodes g = map pairToOccurrence (Map.toList (Map.filter isOpenLeafNode g))
+leafNodes :: CompositionGraph -> [LeafNode]
+leafNodes g = map Leaf $ map pairToOccurrence (Map.toList (Map.filter isOpenLeafNode g))
 
 isOpenLeafNode (Node _ _ Nothing _) = True
 isOpenLeafNode (Node _ _ _ Nothing) = True
