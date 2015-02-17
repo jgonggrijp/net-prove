@@ -16,15 +16,6 @@ import System.Environment
 
 main :: IO ()
 main = do
-  printr (Lexicon.entries . wordsBy (not . isLetter) $ "John likes Mary")
-  --case  of
-   -- Just hypotheses -> 
-    --Nothing         -> putStrLn "The expression was not recognised."
-
-printr (Just hypotheses) = putStrLn $ show $ (unfold hypotheses conclusionSentence)
-printr Nothing           = putStrLn "The expression was not recognised."  
-
-main' = do
   putStrLn "Enter sentence to prove:"
   sentence <- getLine
   stage0 sentence

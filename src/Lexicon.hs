@@ -18,24 +18,29 @@ module Lexicon where
 --    entries xs >>= (Lexicon.lookup x:)
 
     -- Some often used formulae
-    npP   = P (AtomP "np")
-    nP    = P (AtomP "n")
-    sP    = P (AtomP "s")
-    sN    = N (AtomN "s")
-    det   = N (npP :/: nP)
-    tv    = N (N (npP :\: sN) :/: npP)
-    sub   = P ((N (npP:/:nP)):<×>: nP)
+    npP        = P (AtomP "np")
+    nP         = P (AtomP "n")
+    sP         = P (AtomP "s")
+    sN         = N (AtomN "s")
+    det        = N (npP :/: nP)         -- np/n
+    simpleVerb = N (npP :\: sN)         -- np\s-
+    tv         = N (simpleVerb :/: npP) -- (np\s-) / np
+    tvs        = N (simpleVerb :/: sN)  -- (np\s-) / s-
+    sub        = P ((N (npP:/:nP)):<×>: nP)
 
     -- Utility functions for creating atomic terms
     va name = Va (Variable name)
     ev name = Ev (Covariable name)
 
     -- Example lexicon
-    lookup "Mary"  = Just $ LexEntry (va "m")     npP
-    lookup "likes" = Just $ LexEntry (va "likes") tv
-    lookup "John"  = Just $ LexEntry (va "j")     npP
-    lookup "the"   = Just $ LexEntry (va "the")   det
-    lookup "horse" = Just $ LexEntry (va "horse") nP
+    lookup "Mary"   = Just $ LexEntry (va "m")     npP
+    lookup "likes"  = Just $ LexEntry (va "likes") tv
+    lookup "thinks" = Just $ LexEntry (va "think") tvs
+    lookup "Sambam" = Just $ LexEntry (va "think") (P ((P (sN :</>: sN)) :<\>: npP))
+    lookup "left"   = Just $ LexEntry (va "left")  simpleVerb
+    lookup "John"   = Just $ LexEntry (va "j")     npP
+    lookup "the"    = Just $ LexEntry (va "the")   det
+    lookup "horse"  = Just $ LexEntry (va "horse") nP
 
     lookup "s"     = Just $ LexEntry (ev "s")     sN
 
