@@ -3,24 +3,24 @@ module LG.Base where
 type Name = String
 type Identifier = Int
 
-data Occurrence a = Identifier :@ a deriving (Eq)
+data Occurrence a = Identifier :@ a deriving (Eq, Ord)
 
 abstract :: Occurrence a -> a
 abstract (_ :@ x) = x
 
-data Formula = P PositiveFormula | N NegativeFormula deriving (Eq)
+data Formula = P PositiveFormula | N NegativeFormula deriving (Eq, Ord)
 
 data PositiveFormula = AtomP Name
                      | Formula :<×>: Formula
                      | Formula :<\>: Formula
                      | Formula :</>: Formula
-                     deriving (Eq)
+                     deriving (Eq, Ord)
 
 data NegativeFormula = AtomN Name
                      | Formula  :\:  Formula
                      | Formula  :/:  Formula
                      | Formula :<+>: Formula
-                     deriving (Eq)
+                     deriving (Eq, Ord)
 
 instance Show a => Show (Occurrence a) where
   show (k :@ a) = show k ++ " @ " ++ show a

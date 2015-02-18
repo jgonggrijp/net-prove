@@ -94,7 +94,7 @@ data NodeInfo = Node { formula     :: Formula
                      , premiseOf   :: Maybe Link
                      , succedentOf :: Maybe Link
                      }
-              deriving (Eq, Show)
+              deriving (Eq, Show, Ord)
 
 
 -- Change the link above or below a node
@@ -147,6 +147,18 @@ cyclic g | Map.null g     = False
 isTree :: CompositionGraph -> Bool
 isTree = not . cyclic
 
+newtype LeafNode = Leaf (Occurrence NodeInfo) deriving (Eq, Ord)
+
+-- Return all leaf nodes for given composition graph
+-- Complexity: O(n)
+leafNodes :: CompositionGraph -> [LeafNode]
+leafNodes g = map Leaf $ map pairToOccurrence (Map.toList (Map.filter isOpenLeafNode g))
+
+isOpenLeafNode (Node _ _ Nothing _) = True
+isOpenLeafNode (Node _ _ _ Nothing) = True
+isOpenLeafNode _ = False
+
+pairToOccurrence (a, b) = a :@ b
 
 --------------------------------------------------------------------------------
 -- Graph manipulation

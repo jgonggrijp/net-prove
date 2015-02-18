@@ -2,34 +2,34 @@ module LG.Term where
 
 import LG.Base
 
-data Term = V ValueTerm | E ContextTerm | C CommandTerm deriving (Eq)
+data Term = V ValueTerm | E ContextTerm | C CommandTerm deriving (Eq, Ord)
 
-data NodeTerm = Va ValueTerm' | Ev ContextTerm' deriving (Eq)
+data NodeTerm = Va ValueTerm' | Ev ContextTerm' deriving (Eq, Ord)
 
 data ValueTerm'   = Variable Name
                   | ValueTerm   :<×> ValueTerm
                   | ContextTerm :<\> ValueTerm
                   | ValueTerm   :</> ContextTerm
-                  deriving (Eq)
+                  deriving (Eq, Ord)
 
 data ValueTerm    = V' ValueTerm'
                   | Mu Name CommandTerm
-                  deriving (Eq)
+                  deriving (Eq, Ord)
 
 data ContextTerm' = Covariable Name
                   | ValueTerm    :\  ContextTerm
                   | ContextTerm  :/  ValueTerm
                   | ContextTerm :<+> ContextTerm
-                  deriving (Eq)
+                  deriving (Eq, Ord)
 
 data ContextTerm  = E' ContextTerm'
                   | Comu Name CommandTerm
-                  deriving (Eq)
+                  deriving (Eq, Ord)
 
 data CommandTerm  = Cut Name Name Name CommandTerm  -- (first second) / third
                   | ValueTerm' :⌈ Name              -- Command right
                   | Name       :⌉ ContextTerm'      -- Command left
-                  deriving (Eq)
+                  deriving (Eq, Ord)
 
 fromNodeTerm :: NodeTerm -> Term
 fromNodeTerm (Va t) = V (V' t)
