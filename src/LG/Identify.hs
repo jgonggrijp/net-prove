@@ -1,4 +1,4 @@
-module LG.Identify  where
+module LG.Identify (identifyNodes) where
 import LG.Base
 import LG.Term
 import LG.Graph
@@ -7,8 +7,26 @@ import LG.Term
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
+-- A (simple) identification contains two references to a node: one will be the
+-- premise of the axiom link; the other the conclusion.
 type Identification = (Identifier, Identifier)
+
+-- An IdentificationProfile is a set of identifications, representing all
+-- identifications that will happen in one contingent universe for the
+-- given composition graph.
 type IdentificationProfile = Set.Set Identification
+
+-- A verbose identification contains information not just about which two nodes
+-- identify, but also the graphs they are in
+type VerboseIdentification = ((CompositionGraph, LeafNode), (CompositionGraph, LeafNode))
+
+
+fromVerboseIdentifications :: [VerboseIdentification] -> [Identification]
+fromVerboseIdentifications = map fromVerboseIdentification
+
+fromVerboseIdentification :: VerboseIdentification -> Identification
+fromVerboseIdentification ((_, Leaf (id1:@_)), (_, Leaf (id2:@_))) = (id1, id2)
+
 
 -- identifyNodes is used to identify leaf nodes in a composition graph in a maximal way,
 -- that is: all possible combinations of identification are tried out, exhaustively.
@@ -61,35 +79,16 @@ graphAfterIdentification (id1,id2) g0 = g3
 
 
 
-
-
-
-
-
-
-
--- A verbose identification contains information not just about which two nodes identify, but also the graphs they are in
-type VerboseIdentification = ((CompositionGraph, LeafNode), (CompositionGraph, LeafNode))
-
-fromVerboseIdentifications :: [VerboseIdentification] -> [Identification]
-fromVerboseIdentifications = map fromVerboseIdentification
-
-fromVerboseIdentification :: VerboseIdentification -> Identification
-fromVerboseIdentification ((_, Leaf (id1:@_)), (_, Leaf (id2:@_))) = (id1, id2)
-
-verboseToIdProfile :: [[VerboseIdentification]] -> Set.Set IdentificationProfile
-verboseToIdProfile a = Set.fromList $ map (Set.fromList . fromVerboseIdentifications) a
-
-
-
 -- Input : A (ordered) list of input formulas that corresponds to the order of words. Node identifiers must not clash.
 -- Output: Set of sets of possible node identifications that guarantee that the merged graph will be connected
 generateIdentificationProfiles :: [CompositionGraph] -> Set.Set IdentificationProfile
-generateIdentificationProfiles subgraphs = verboseToIdProfile validProfiles
+generateIdentificationProfiles subgraphs = maximalProfiles
   where subgraphLeafNodes = map (\g -> (g, leafNodes g)) subgraphs
-        allPairings   = generateIdentifications subgraphLeafNodes -- Gives us a list of pairing for every leaf node.
-        allProfiles   = getProfilesFromPossiblePairings allPairings
-        validProfiles = getValidProfiles subgraphs allProfiles
+        allPairings         = generateIdentifications subgraphLeafNodes -- Gives us a list of pairing for every leaf node.
+        allProfiles         = getProfilesFromPossiblePairings allPairings
+        validProfiles       = getValidProfiles subgraphs allProfiles
+        validSimpleProfiles = map (Set.fromList . fromVerboseIdentifications) validProfiles
+        maximalProfiles     = Set.fromList $ filter (isMaximalInRegardTo validSimpleProfiles) validSimpleProfiles -- Filter out profiles that are strict subsets of other profiles
 
 
 -- TODO we might be able to make this more efficient by clustering
@@ -130,46 +129,20 @@ allGraphsAreTouched graphSet profile =
         graphTerritories = map (\(g1,g2)->Set.fromList [g1,g2]) $ map getGraphPair profile
         commonTerritories = amassCommonTerritory graphTerritories []
 
+
+-- Returns just the graphs from a verbose identification
+getGraphPair :: VerboseIdentification -> (CompositionGraph, CompositionGraph)
 getGraphPair ((g1, _), (g2, _)) = (g1, g2)
+
+
 
 amassCommonTerritory (p1:p2:ps) noMatch =
   if (Set.intersection p1 p2) /= Set.empty
-  then amassCommonTerritory ((Set.union p1 p2):noMatch) [] --Start over with extra union
+  then amassCommonTerritory ((Set.union p1 p2):noMatch) [] --Start over with new union
   else amassCommonTerritory (p2:ps) (p1:noMatch)
 amassCommonTerritory commonTerritories noMatch = commonTerritories++noMatch
 
 
---                graphMap = foldl addToMap Map.empty graphPairs
---                addToMap :: (Map.Map CompositionGraph (Set.Set CompositionGraph)) -> (CompositionGraph, CompositionGraph) -> (Map.Map CompositionGraph (Set.Set CompositionGraph))
---                addToMap map (g1,g2) = Map.insert g1 (Set.insert g2 val) map
---                  where val :: Set.Set CompositionGraph
---                        val = case Map.lookup g1 map of
---                                      Just s  -> s
---                                      Nothing -> Set.empty
---                mapsToOtherGraph (g1, g2) = (g1 /= g2)
---                visitable graphMap  = case toList graphMap of
---                                        []         -> Set.empty
---                                        ((k,graphSet):xs) -> unionWithValues (Map.delete k graphMap) graphSet (Set.insert k Set.empty)
---                unionWithValues map graphSet visited = Set.insert v visited
---
---
---                visitedGraphsAfterWalk' graphMap [] visited     = visited
---                visitedGraphsAfterWalk' graphMap (k:ks) visited = case Map.lookup k graphMap of
---                  Just graphSet -> Set.union (visitedGraphsAfterWalk' graphMap ks visited)
---                  Nothing       -> visitedGraphsAfterWalk' graphMap ks visited
-
-
-
-
-
----------------------------------------
---isValsdfidProfile graphs [] = True
---isValsfdidProfile graphs ((i,j):xs) = not(occursInP i xs || occursInC j xs) && isCompatible xs
---  where occursInP x [] = False
---    occursInP x ((i,_):xs) = x==i||(occursInP x xs)
---    occursInC x [] = False
---    occursInC x ((_,j):xs) = x==j||(occursInC x xs)
----------------------------------------
 
 
 type LeafSubgraph = (CompositionGraph, [LeafNode])
@@ -189,7 +162,6 @@ generateIdentifications' []                     _        acc = reverse acc
 generateIdentifications' (subgraphLeafNodes:ns) allLeafs acc = generateIdentifications' ns allLeafs (a++acc)
   where a = getPossIdsForLeafs subgraphLeafNodes allLeafs []
 
---getPossIdsForLeafs :: [(CompositionGraph, LeafNode)] -> [LeafSubgraph] -> [(LeafNode, [(CompositionGraph, [VerboseIdentification])])]->[(LeafNode, [(CompositionGraph, [VerboseIdentification])])]
 getPossIdsForLeafs []     _            acc = reverse acc
 getPossIdsForLeafs ((c1, l):ls) allLeafNodes acc = getPossIdsForLeafs ls allLeafNodes (possibilities++acc)
   where possibilities = getPossIdsForLeaf (c1, l) allLeafNodes []
@@ -207,13 +179,6 @@ getPossIdsForLeafWith (c1, (leaf@(Leaf (id1:@(Node formula1 _ downlink1 uplink1)
                             downlink1 == Nothing && uplink2 == Nothing,                  -- Select pairs that are not saturated
                             if uplink1/=Nothing then not(uplink1 == downlink2) else True -- Don't match up atoms that are already connected with an axiom link
         ]
-
-
--- Generates all subsets of a given list
-subsets :: [a] -> [[a]]
-subsets [] = [[]]
-subsets (x:xs) = (map (x:) y) ++ y
-  where y = subsets xs
 
 
 
@@ -249,6 +214,7 @@ getNameOfAtomicFormula (P (AtomP s)) = Just s
 getNameOfAtomicFormula (N (AtomN s)) = Just s
 getNameOfAtomicFormula _ = Nothing
 
+-- Returns whether node a and b are both atomic and have the same formula name
 sameName a b = (aName == bName) && (aName /= Nothing)
   where aName = getNameOfAtomicFormula a
         bName = getNameOfAtomicFormula b
@@ -261,34 +227,11 @@ sameName a b = (aName == bName) && (aName /= Nothing)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
---  where leafs = leafNodes (mergeGraphs subgraphs)
-
---        compatibleSubsets = filter (isMaximalInRegardTo possibleSubsets) possibleSubsets
---          where possibleSubsets = getCompatibleSubsets possibleIdentifications
---                isMaximalInRegardTo [] set = True
---                isMaximalInRegardTo (s2:xs) s1 = if s1 `Set.isProperSubsetOf` s2 then False else isMaximalInRegardTo xs s1
---        getCompatibleSubsets nodes = map (Set.fromList . (map (\(id1:@_,id2:@_)->(id1,id2)))) (filter isCompatible (subsets nodes))
-
---        compatibleIdentifications _ [] acc = acc
---        compatibleIdentifications (i1,j1) ((i2,j2):xs) acc = compatibleIdentifications (i1,j1) xs (if (i1/=i2 && j1/=j2 && i1/=j2 && i2/=j1) then ((i2,j2):acc) else acc)
---        --createGraph :: CompositionGraph -> Set.Set (Occurrence NodeInfo, Occurrence NodeInfo) -> CompositionGraph
+-- NOTE: this function is not correct: it should leave the main formula intact, while deleting the active
+-- formula. This is not always the case. Currently, we ignore this function because it is not needed for
+-- any of the following steps. (Validation collapses *all* axiom links anyway and it's an extra complication
+-- for term labeling.)
 --
---
-
-
 -- See M&M, p. 23: "all axiom links connecting terms of the same type (value or context) are collapsed."
 collapseAxiomLinks :: CompositionGraph -> CompositionGraph
 collapseAxiomLinks g = collapseConclusionLinks (((map (\(Node _ _ _ l)->l)) . (filter isAxiomConclusion) . Map.elems) g) g
@@ -322,3 +265,20 @@ collapseAxiomLinks g = collapseConclusionLinks (((map (\(Node _ _ _ l)->l)) . (f
                         replaceInList replaceMe withMe inList = map replaceIdInTentance inList
                         replaceIdInTentance t@(Active x) = if x==replaceMe then Active withMe else t
                         replaceIdInTentance t@(MainT x) = if x==replaceMe then MainT withMe else t
+
+-------------
+-- SET UTILS
+-------------
+-- NOTE: I can't decide whether to put these functions in another module
+
+-- Generates all subsets of a given list
+subsets :: [a] -> [[a]]
+subsets [] = [[]]
+subsets (x:xs) = (map (x:) y) ++ y
+  where y = subsets xs
+
+-- Returns whether s1 is a maximal subset in regards to all other
+-- sets, that is, whether s1 is not a proper subset of any other
+-- set.
+isMaximalInRegardTo [] _ = True
+isMaximalInRegardTo (s2:xs) s1 = if s1 `Set.isProperSubsetOf` s2 then False else isMaximalInRegardTo xs s1
