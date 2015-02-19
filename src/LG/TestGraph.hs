@@ -13,6 +13,11 @@ import LG.Graph
     The purpose of exposing all intermediate building blocks is to aid
     in testing. Keep in mind that this module introduces lots of
     variables with short names, though.
+
+    In order to test the term derivation, load this module as well as
+    LG.Subnet and LG.SubnetGraph into GHCi, then try this expression:
+
+    mapM_ print $ termsFromProofnet testGraph k910
 -}
 
 -- base formulae

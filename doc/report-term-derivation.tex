@@ -1,0 +1,327 @@
+\documentclass[12pt,a4paper]{article}
+\linespread{1.1}
+\frenchspacing
+
+% \usepackage{amssymb}
+% \usepackage{stmaryrd}
+% \usepackage{graphicx}
+% \usepackage{latexsym}
+% \usepackage{proof}
+% \usepackage{mathabx}
+% \usepackage{xcolor}
+\usepackage[british]{babel}
+\usepackage{hyperref}
+
+\usepackage{fontspec,xltxtra,xunicode}
+\defaultfontfeatures{Mapping=tex-text}
+\setromanfont{Palatino}
+\setsansfont{Helvetica}
+\setmonofont{FreeMono}
+
+\usepackage{minted}
+\usemintedstyle{netprovetermstyle}
+\setminted{numbers=left,fontsize=\fontsize{9.2pt}{10pt}}
+\newmintinline[hs]{haskell}{fontsize=\normal}
+\newminted{haskell}{autogobble,frame=single,fontsize=\small}
+\newmintedfile{haskell}{}
+
+\usepackage{amsmath,amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\newcommand{\nd}[2]{#1 \vdash #2}
+\newcommand{\Ra}{\rightarrow}
+\newcommand{\lolli}{\multimap}
+\newcommand{\bs}{\backslash}
+\newcommand{\W}[1]{\textsf{#1}}
+\newcommand{\ld}{\lambda}
+\newcommand{\coderef}[1]{\href{https://github.com/jgonggrijp/net-prove/blob/report/#1}{\texttt{#1}}}
+
+
+\begin{document}
+
+\title{Term derivation in automated proof nets for the Lambek-Grishin calculus}
+\author{Julian Gonggrijp\thanks{Joint project with Niels Steenbergen and Maarten Trompper. With advice from Prof. dr. Michael Moortgat.}}
+\date{10. February 2015\thanks{This paper was based on commit \href{https://github.com/jgonggrijp/net-prove/tree/6e7f7b7ed7b3b78737331cadea354efbba89216b}{\texttt{6e7f7b7ed7b3}} (except for this timestamp).}}
+\maketitle
+
+
+\section{Introduction}
+
+The Lambek-Grishin calculus (LG) is an extension of Lambek calculus that has proven itself in the analysis of several context-sensitive natural language phenomena. sLG, a display sequent calculus for LG, has been shown to be tractable. \cite{m09} However, it allows for spurious ambiguity, requires explicit manipulation of sequents that are equivalent under structural rules and depends on a predetermined sequent structure. For the latter reason, sLG alone cannot be used to parse a sentence. Moortgat and Moot (2012) provided a proof net formalism for LG that solves all of these issues. \cite{mm12}
+
+Automated theorem provers tend to work in ``sequent style'', searching top-down by backwards chaining. A theorem prover based on proof nets could work bottom-up instead and compute the proof structure---hence, parse a sentence---as a byproduct. To our knowledge, such a theorem prover was not yet built for LG. We decided to fill this gap using Haskell. The context for this endeavour was the 2014--2015 Master's course \emph{Logic and Language} (LoLa), taught by Prof. dr. Michael Moortgat at Utrecht University\footnote{\url{http://phil.uu.nl/llc/2014/}}.
+
+After defining a core data structure as the interface between components of the theorem prover, we divided the remaining work into three sub-projects that could be developed in parallel. Term derivation, the topic of the current paper, is one of those three sub-projects. By the Curry-Howard isomorphism, every proof has a compact, algebraic representation called a term; since a proof net is also a proof, it follows that it can be represented with a term. The task of the author was to realise this for our Haskell implementation of LG proof nets. The term would then be available as a universal interface for further use; as a convenient proof representation to the human reader, as a source from which to reconstruct the display sequent version of the proof, or as the input material to a homomorphic mapping to another calculus in a categorial grammar setup. In particular, a CPS translation to MILL/LP has been shown to be worthwhile when LG is the source calculus. \cite{mm12}
+
+
+\section{Project overview}\label{sec:project}
+
+Every programming project starts with a specification. We decided that our theorem prover should initially at least be able to execute the following steps:
+\begin{enumerate}
+    \item let the user enter a sequence of words (unstructured), with the implicit request to prove that the words in the given order can form a grammatical sentence;
+    \item look up the words in a lexicon and retrieve their associated syntactic types (LG formulae);
+    \item generate a list with all possible proof structures for those formulae as detailed in \cite[p.~4--7]{mm12};
+    \item filter the proof nets out of that list, applying the graph transformation rules described in \cite[p.~7--11]{mm12};
+    \item compute all non-equivalent terms for each of those proof nets, following the procedure described in \cite[p.~21--26]{mm12};
+    \item tell the user whether the given sequence of words was provable and if so, list the terms that were just computed as its possible interpretations.
+\end{enumerate}
+It was agreed that Maarten Trompper would implement step 3 \cite{maarten}, Niels Steenbergen would implement step 4 \cite{niels} and Julian Gonggrijp would implement step 5 (this paper). We first jointly designed the essential data structures for formulae, terms and graphs and then each worked on our own components in parallel. Steps 1, 2 and 6 were left for later, to be taken up by whichever developer would turn out to finish his own component first. We also identified an extended ``wish list'' of features that should ultimately be included in a future version of our project:
+\begin{itemize}
+    \item visualisation of graphs;
+    \item a \emph{large} lexicon;
+    \item CPS translation of the terms from step 5 to MILL/LP for the derivational interpretation and thence to IL for the lexical interpretation, as explained in \cite[p.~14,19--21]{mm12};
+    \item reconstruction of corresponding sequent-style proofs out of the terms from step 5, for sLG \cite[p.~3--4]{mm12} and fLG \cite[p.~15--18]{mm12};
+    \item abstractions of the data structures and algorithms to facilitate reuse of the proof net based approach for other logical calculi, for example LP with modal operators \cite{qm02}.
+\end{itemize}
+In anticipation of the latter wish item, we allocated a ``Framework'' directory in advance.
+
+We adopted the Cabal package format\footnote{\url{https://www.haskell.org/cabal/}} from the beginning, in order to accommodate for future code reuse and deployment. Our project source code is freely available under the terms of the BSD license\footnote{\url{http://opensource.org/licenses/BSD-3-Clause}}, on GitHub\footnote{\url{https://github.com/jgonggrijp/net-prove},\\ \url{https://github.com/cowl/net-prove},\\ \url{https://github.com/digitalheir/net-prove}\label{ftn:github}}. Note that at the time of writing, there are slightly different versions of the code on different branches; a version in which all the steps numbered above are combined may be found on \texttt{jgonggrijp/merge-trial}. The next section will assume \texttt{jgonggrijp/report}, which contains additional comments but lacks the components implemented by Niels Steenbergen and Maarten Trompper.
+
+
+\section{Implementation}
+
+Steps 1, 2 and 6 from Section \ref{sec:project} will not be discussed here, because these steps are not of primary interest to the LoLa course and the implementation is relatively straightforward. Suffice to say that these steps \emph{have} been implemented. Niels Steenbergen has written a crude but effective pretty-printer for the graphs which will not be discussed here, either. All of the project implementation can be retrieved from GitHub if desired (see Footnote \ref{ftn:github}); we will occasionally refer to the source code using paths relative to the project root. Discussion of the implementations of steps 3 and 4 is left to the respective authors \cite{maarten,niels}. The remainder of this section covers the common data structures and step 5.
+
+
+\subsection{Core data structures}
+
+Formulae and terms were implemented as tree-like data structures with strict typing. Visually appealing value constructors were used when feasible. Integer identifiers were used to distinguish occurrences of the same formula or term. For the details, please refer to the code as it is self-ex\-plan\-a\-tory: see \coderef{src/LG/Base.hs} and \coderef{src/LG/Term.hs} (the latter is also listed in Appendix \ref{code:term}).
+
+Implementation of the links was a bit more challenging, because several orthogonal kinds of information had to be encoded and it would be undesirable to write a separate constructor for each possible combination of options. The relevant aspects were link type (tensor, cotensor or axiom), order of tentacles (left to right), shape (for (co)tensor links: two premises and one conclusion or one premise and two conclusions) and direction of information flow (main formula versus active formulas). At the same time, the data literals had to remain readable. Our solution was to distinguish the link types using the constructors with a visually recognisable operator notation, where the left and right operands where lists that corresponded to the premises and conclusions of the link, respectively, and the left-to-right order of the premises and conclusions was equal to the order within those lists. The responsibility to distinguish the main formula from the active formulae as well as the responsibility to keep track of formula occurrences were deferred to an auxiliary type, \hs/Tentacle/. The data structure is summarised in Listing \ref{lst:link}; for full details, refer to \coderef{src/LG/Graph.hs}.
+
+\begin{listing}
+    \begin{haskellcode}
+        data Tentacle = MainT Identifier | Active Identifier
+        
+        --           premises      succedents
+        data Link = [Tentacle] :○: [Tentacle]  -- tensor
+                  | [Tentacle] :●: [Tentacle]  -- cotensor
+                  |  Tentacle  :|:  Tentacle   -- axiom
+    \end{haskellcode}
+    \caption{Data structure for links.}
+    \label{lst:link}
+\end{listing}
+
+For theoretical and didactical reasons, a scheme of several graph types is described in \cite{mm12}. A \emph{proof structure} is the ``plain'' kind consisting of unannotated formulas connected by (co)tensor links. This would be the output of step 3 as numbered in Section \ref{sec:project}. In order to facilitate graph transformations for verification (step 4), an \emph{abstract proof structure} would be produced by erasing all formulas from the internal nodes. For term derivation (step~5) on the other hand, information would be added by converting all nodes of a proof structure to axiom-connected pairs and labelling all nodes with terms, resulting in a \emph{composition graph}.
+
+For a practical implementation, it is more convenient to start with a rich data structure and ignore any unneeded information later on, than to start with a minimal data structure and commit oneself to augmenting or converting the data when more information is required. Given that all necessary information to create a full-blown composition graph is available from the start, we decided to work with composition graphs exclusively. Our implementation, \hs/CompositionGraph/, is a fairly typical linked (hyper)graph, in which \hs/Identifier/s are mapped to node containers. The latter data type, \hs/NodeInfo/, contain a \hs/Formula/, a \hs/Term/, an optional up\hs/Link/ and an optional down\hs/Link/. Please refer to \coderef{src/LG/Graph.hs} for the details.
+
+
+\subsection{Term computation}
+
+As implemented, \hs/Term/ computation from a \hs/CompositionGraph/ takes two steps. First all rooted \hs/Subnet/s, i.e. subgraphs containing only tensor and substitution \hs/Link/s, are identified and collected in a new graph data structure, \hs/SubnetGraph/. In our implementation, solitary nodes that do not have tensor or substitution \hs/Link/s attached also count as \hs/Subnet/s. The algorithm is summarised as follows.
+\begin{itemize}
+    \item While any unvisited nodes remain:\begin{enumerate}
+        \item Pick an unvisited node and start a new \hs/Subnet/ with that node.
+        \item\label{alg:extract-recurse} Consider attached \hs/Link/s, if any:\begin{itemize}
+            \item If tensor or substitution, add the neighbouring nodes to the current \hs/Subnet/ and recurse with those nodes into (\ref{alg:extract-recurse}), taking care not to follow the same \hs/Link/ again.
+            \item Otherwise, consider the \hs/Link/ a boundary of the \hs/Subnet/ that is currently being constructed and mark whether the \hs/Link/ is followable as summarized in \cite[Fig.~16]{mm12}.
+        \end{itemize}
+        \item Add the current \hs/Subnet/ to the \hs/SubnetGraph/ and regard all its nodes as visited.
+    \end{enumerate}
+\end{itemize}
+The next step involves a recursive algorithm which, given a \hs/Composition/\-\hs/Graph/ $C$, a corresponding \hs/SubnetGraph/ $S$ and a target $\mu$~\hs/Link/ $T$ that should be followed last, computes all non-equivalent valid ways to arrive at a merged \hs/Subnet/ that covers $C$ entirely, starting from a particular \hs/Subnet/ $N$ and one of its followable \hs/Link/s $F$ in $S$. The summary of this algorithm is provided below.
+\begin{enumerate}
+    \item\label{alg:merge-recurse} \hfill \begin{enumerate}
+        \item Follow $F$ and merge $N$ with the \hs/Subnet/ that is attached to the other end of $F$, creating a new, larger \hs/Subnet/ $N'$. Create an updated version of $S$, $S'$.\begin{itemize}
+            \item If $F = T$:\begin{itemize}
+                \item If $N'$ has no followable \hs/Link/s in its boundary and it contains all nodes of $C$, return a singleton list of $N'$ as the result.
+                \item Otherwise, return the empty list as the result.
+            \end{itemize}
+            \item Otherwise, continue with the following steps.
+        \end{itemize}
+        \item\label{alg:expand-list} Determine which subset of followable \hs/Link/s should be expanded.\begin{itemize}
+            \item If the \hs/Term/ of $N'$ is a command:\begin{itemize}
+                \item If there are followable cotensor \hs/Link/s available: the co\-ten\-sor \hs/Link/s.
+                \item Otherwise: the mu \hs/Link/s.
+            \end{itemize}
+            \item Otherwise: the command \hs/Link/s.
+        \end{itemize}
+        \item For each $F'$ in the subset of followable \hs/Link/s that was selected in the previous step, recurse into (\ref{alg:merge-recurse}) with $C$, $S'$, $L$, $N'$ and $F'$.
+        \item Return the concatenation of the return values from the previous step as the result.
+    \end{enumerate}
+\end{enumerate}
+Finally, the above algorithm is mapped over all \hs/Subnet/s that were extracted in the first step, the results are concatenated and the \hs/Term/s are extracted.
+
+Since the interior structure of a \hs/Subnet/ is not used in the above procedure, the \hs/Subnet/ data structure only contains the set of node \hs/Identifier/s that belong to it, its computed \hs/Term/ and its set of followable \hs/Link/s. A \hs/SubnetGraph/ is just a mapping from node \hs/Identifier/s to \hs/Subnet/s. Because of this, it can double as a convenient lookup table to determine which nodes have been visited during the first step.
+
+As required by good Haskell fashion, the algorithms were implemented in lazy and purely functional style. The complete listings for the most relevant modules are included in the appendix, starting from page \pageref{code}.
+
+
+\section{Results}
+
+All of the steps for the initial project specification listed in Section \ref{sec:project} have been realised. However, a number of issues remain, one of which prevents any \hs/Term/s from being displayed to the user in step 6. The issues are described on page \pageref{sub:issues}. \hs/Term/ computation by itself appears to work flawlessly.
+
+In order to verify the \hs/Term/ computation, the example in Figure 18 from \cite[p.~28]{mm12} was hand-coded into our Haskell data structures in the module \hs/LG.TestGraph/. Negative polarity was assumed for the $s$ atom and positive polarity was assumed for all other atoms. This \hs/testGraph/ includes all types of \hs/Link/s except for substitution \hs/Link/s, as well as a branching point for the computation.
+
+Our algorithm correctly derived both possible \hs/Term/s for this graph and nothing else. The \hs/testGraph/ was then modified to include two substitution \hs/Link/s as well. The latter version is listed in Appendix \ref{code:test} on page \pageref{code:test} and onwards, the former version may be retrieved from commit \href{https://github.com/jgonggrijp/net-prove/blob/68f84860f4f9535e15a12161f5120fb25f6b4219/src/LG/TestGraph.hs}{\texttt{68f84860f4f}}. The algorithm again correctly derived both possible terms, thus also demonstrating that the algorithm can operate correctly regardless of whether substitution \hs/Link/s are collapsed in advance or not.
+
+The reader may repeat the verification for herself by executing the following commands from the \texttt{src} directory:
+\begin{verbatim}
+    ghci LG/Subnet LG/SubnetGraph LG/TestGraph
+    :m +LG.SubnetGraph 
+    :m +LG.TestGraph
+    mapM_ print $ termsFromProofnet testGraph k910
+\end{verbatim}
+where \hs/k910/ is the target $\mu$ \hs/Link/. Please refer to the listing in Appendix~\ref{code:test} for a full overview of constants that are available for testing.
+
+
+\subsection{Complexity analysis}
+
+The space and time complexities of the algorithms discussed in this paper are functions of the number of nodes in the input \hs/CompositionGraph/. Because of this, we will first prove that if a function is $O(f(N))$ with $N$ the number of nodes in the graph, the same function is also $O(f(M))$ with $M$ the combined number of atom occurrences in the proof formulas.
+\begin{theorem}\label{thm:nodes}
+    The number of nodes in a \hs/CompositionGraph/ is proportional to the combined number of atomic sub-formula occurrences of the hypotheses and conclusions for which it was constructed.
+\end{theorem}
+\begin{proof}
+    Each of the hypotheses and conclusions is a formula. An LG formula is a full binary expression tree, where the leafs are atom occurrences and the internal nodes are occurrences of the logical connectives. The number of internal nodes in a full binary tree\footnote{\url{http://xlinux.nist.gov/dads//HTML/fullBinaryTree.html}} is equal to the number of leafs minus one. A \hs/CompositionGraph/ contains one or two nodes for each atomic sub-formula occurrence and one or two nodes for each occurrence of a logical connective (this follows directly from Definition~3.2 in \cite[p.~23]{mm12}). Hence, the number of nodes in a connected \hs/CompositionGraph/ must be between one and four times the combined number of atom occurrences in its hypotheses and conclusions.
+\end{proof}
+
+The complexity of \hs/LG.SubnetGraph.extractSubnets/ is covered by the follow theorems. See also Appendix~\ref{code:netgraph}, lines~40--71.
+\begin{theorem}\label{thm:netgraph-time}
+    The time complexity of \hs/extractSubnets/ is $\Theta(N \log N)$.
+\end{theorem}
+\begin{proof}
+    Each node in a \hs/CompositionGraph/ is visited once or twice, once because of the \hs/Map.foldrWithKey/ and potentially a second time if it was previously reached in a recursive call to \hs/LG.Subnet.expandTentacle'/ (Appendix~\ref{code:net}, lines~227--242). The first visit to a node adds $O(\log N)$ to the total running time because the node has to be inserted in the \hs/SubnetGraph/ which is an instance of \hs/Data.Map/, which is implemented as a balanced binary search tree\footnote{\url{http://hackage.haskell.org/package/containers-0.5.6.3/docs/Data-Map-Lazy.html}}. Hence, the overall time complexity is in the order of $\Theta(N)\times O(\log N) = \Theta(N\log N)$.
+\end{proof}
+
+\begin{theorem}\label{thm:netgraph-space}
+    The space complexity of \hs/extractSubnets/ is $\Theta(N)$.
+\end{theorem}
+\begin{proof}
+    The accumulator for \hs/extractSubnets/ consists of a list of \hs/Subnet/s and a \hs/SubnetGraph/. These data structures grow monotonically until the end of the fold. In their final state, their combined size is $\Theta(N)$ because each node \hs/Identifier/ occurs in exactly one \hs/Subnet/ and has exactly one entry in the \hs/SubnetGraph/. The \hs/Subnet/s themselves are stored only once in memory and cannot be greater in number than the nodes of the \hs/CompositionGraph/.
+    
+    Recursion at any point of execution of the algorithm cannot run deeper than the number of nodes in the \hs/CompositionGraph/ times a constant factor. Other than the accumulated \hs/Subnet/s and \hs/SubnetGraph/, every step in the algorithm requires only constant space. Hence, the size of the accumulator completely determines the space complexity of the algorithm.
+\end{proof}
+
+The complexity of \hs/LG.SubnetGraph.validExtensions/ is covered by the following theorems. See also Appendix~\ref{code:netgraph}, lines~73--110.
+\begin{theorem}\label{thm:inwards-links}
+    In a \hs/SubnetGraph/ that corresponds to a proof net, each \hs/Subnet/ can have at most one inwards followable \hs/Link/.
+\end{theorem}
+\begin{proof}
+    If this would not be the case, \hs/Term/ computation could not work because the same \hs/Subnet/ would have to be merged into another \hs/Subnet/ multiple times. It has been proven before that there is at least one \hs/Term/ for each proof net \cite[p.~11]{mm12}, so it would be a contradiction if any \hs/Subnet/ had more than one inwards followable \hs/Link/.
+\end{proof}
+
+\begin{theorem}\label{thm:tree}
+    A \hs/SubnetGraph/ that corresponds to a proof net is a tree.
+\end{theorem}
+\begin{proof}
+    From Theorem~\ref{thm:inwards-links} it follows that the graph must be a forest. Since it is possible to compute a term by starting at one \hs/Subnet/ and visiting all others, the graph must be connected. Hence, the graph is a forest with only a single tree.
+\end{proof}
+
+\begin{theorem}\label{thm:exponential}
+    The time complexity of \hs/validExtensions/ is $O(Nb^{\frac{N}{b}})$ with $b$ the average branching factor of the \hs/SubnetGraph/.
+\end{theorem}
+\begin{proof}
+    In the worst case, the \hs/SubnetGraph/ will be entirely traversed in all possible ways by \hs/validExtensions/. By Theorem~\ref{thm:tree}, the \hs/SubnetGraph/ must be a tree. The number of possible ways to traverse a tree is $b^n$, with $b$ the average branching factor and $n$ the number of internal nodes. $n$, in turn, is proportional to the total number of nodes $N$ divided by $b$. Every tree traversal includes a call to \hs/validExtensions/ for each of the $N$ nodes. The number of \hs/Subnet/s in the tree is not necessarily less than proportional to the number of nodes in the corresponding \hs/CompositionGraph/, so $O(Nb^{\frac{N}{b}})$ expresses the time complexity for the algorithm also when $N$ indicates the number of nodes.
+\end{proof}
+
+\begin{conjecture}\label{cnj:polynomial}
+    The time complexity of \hs/validExtensions/ might be polynomial in the average case.
+\end{conjecture}
+\noindent\emph{Motivation.}\hspace{6pt}Given that there are generally few \hs/Term/s for a proof net, the \hs/SubnetGraph/ tree might contain only a few branching points in most cases. If so, the majority of \hs/Subnet/s belongs to ``straight'' parts of the tree where the branching factor $b$ from Theorem~\ref{thm:exponential} locally degrades to 1. The overall complexity then becomes $N$ times something that is not much larger, and possibly even smaller, than $N$.
+
+\begin{theorem}\label{thm:extend-space}
+    The space complexity of \hs/validExtensions/ is $O(N^2)$.
+\end{theorem}
+\begin{proof}
+    For each call to \hs/validExtensions/ a \hs/SubnetGraph/ has to be kept in memory, which takes $O(N)$ space (Theorem~\ref{thm:netgraph-space}). Because of recursion, up to $O(N)$ different, progressively merged versions of the \hs/SubnetGraph/ may have to be stored at the same time.
+\end{proof}
+
+We finally arrive at the complexity for the \hs/Term/ computation algorithm as a whole. See also Appendix~\ref{code:netgraph}, lines~223--234 for the algorithm that wraps up the procedure.
+\begin{theorem}\label{thm:deciding-complexity}
+    Time and space complexity of \hs/Term/ computation as a whole are determined by the complexity of \hs/validExtensions/.
+\end{theorem}
+\begin{proof}
+    \hs/Term/ computation takes a single call to \hs/extractSubnets/, followed by a call to \hs/validExtensions/ for each \hs/Subnet/ of the result. Given Theorems~\ref{thm:netgraph-time},~\ref{thm:exponential} and despite Conjecture~\ref{cnj:polynomial}, time complexity for a single call to \hs/validExtensions/ already dominates that of \hs/extractSubnets/. The sequence of calls to \hs/validExtensions/ does not add up to a complexity greater than $O(Nb^{\frac{N}{b}})$, because all calls except for one are run on a subtree of the \hs/SubnetGraph/. A subtree contains only $1/b$ times as many internal nodes as the complete tree, so the exponential in the number of possible subtree traversals is also just a fraction of the exponential for the complete tree and the complexity for the complete tree wins from the complexity of all its subtrees combined. The exception is the degenerate case from Conjecture~\ref{cnj:polynomial}, where the summation of $O(N)$ close--to--linear invocations may lift the overall complexity to a one degree higher order polynomial. Still, the overall time complexity for \hs/Term/ computation as a whole would be determined by the second stage only.
+    
+    The same is true of the space complexity, where the complexity for \hs/extractSubnets/ (Theorem~\ref{thm:netgraph-space}) is already beaten by the complexity for a single invocation of \hs/validExtensions/ (Theorem~\ref{thm:extend-space}). Again, the multiple invocations of the latter do not add up to a greater complexity, in this case because the stack does not need to be preserved between the invocations.
+\end{proof}
+
+\begin{corollary}
+    From Theorem~\ref{thm:deciding-complexity} it follows that the overall time complexity for \hs/Term/ computation is $O(Nb^{\frac{N}{b}})$, where $b$ is the average branching factor of the \hs/SubnetGraph/. The overall space complexity is $O(N^2)$.
+\end{corollary}
+
+
+\subsection{Issues}\label{sub:issues}
+
+At the time of writing, the following issues apply to the combined project on the \texttt{jgonggrijp/merge-trial} branch.
+\begin{itemize}
+    \item One of the essential rules for unfolding hypotheses and conclusions was left entirely implicit in \cite{mm12}, being that the hypotheses and conclusions of the final composition graph should be value nodes even if the formula is negative. The only way to discover this rule was by closely studying Figure~18. As a result, Maarten~Trompper was not aware of this rule, so it was not included in step~3 as numbered in Section~\ref{sec:project}. Thus, \hs/CompositionGraph/s are generated for which no \hs/Term/ can be computed even though the proof net validation from step~4 may succeed.
+    \item Respecting the order of the words provided by the user in step~1 while constructing composition graphs in step~3 turned out to be a hard problem. We have not solved it yet. Hence, our theorem prover attempts to generate \hs/CompositionGraph/s for all possible permutations of the provided words, rather than only for the given order of those words. For further details see \cite{maarten}.
+\end{itemize}
+These issues need to be addressed.
+
+The following issues also apply to the combined project, but are internal to the algorithm discussed in this paper. They all hinge on the fact that the \hs/Name/ type is unsafe, i.e. it does not distinguish between variables and covariables. This distinction can be reconstructed from the enclosing expression in nearly all cases except for the \hs/Cut/ constructor of \hs/CommandTerm/ (see Appendix~\ref{code:term}, line~34).
+\begin{itemize}
+    \item The data structure does not inherently rule out invalid cuts of the forms $\frac{x\ y}{\alpha}$ or $\frac{\alpha\ \beta}{x}$ (see \cite[p.~24]{mm12} for an overview of all valid cuts). However, such an invalid form will never be generated by the \hs/Term/ computation algorithm discussed in this paper, nor will the unfolding algorithms by Maarten Trompper generate cotensor \hs/Link/s that correspond to such an invalid \hs/Cut/.
+    \item The \hs/isSubtermOf/ function may incorrectly return \hs/True/ if the \hs/Name/ of the first \hs/Term/ matches the last \hs/Name/ in a \hs/Cut/ of the second \hs/Term/, while the former corresponds to a variable and the latter to a covariable or vice versa (see Appendix~\ref{code:term}, lines~131--135). However, this would mean that the same name is shared by distinct (co)variables, which would be a ``bad idea'' in any case. It is reasonable to require that all (co)variable names are distinct and the unfolding algorithms by Maarten Trompper are guaranteed to meet this requirement.
+    \item Apart from creating separate \hs/newtype/s for variable and covariable names, fixing the above issues in a more type-safe way would require the \hs/Cut/ constructor to be exploded into six different versions.
+\end{itemize}
+The former two issues need not be addressed because of the non-existent or irrelevant circumstances in which they would arise. Given the latter issue, not addressing them is probably the best thing to do. See also \href{https://github.com/jgonggrijp/net-prove/issues/2}{Issue~\texttt{\#2} on GitHub}.
+
+
+\section{Conclusion}
+
+Despite the issues listed in Section~\ref{sub:issues}, our implementation of the theorem prover has mostly met the specification in Section~\ref{sec:project}. The issues are solvable, so it is likely that this will soon be the first automated bottom-up theorem prover and sentence parser for LG.
+
+The term computation algorithm works correctly. While its complexity is exponential in the worst case, there is good hope that it will be polynomial in the average case.
+
+
+\subsection{Future work}
+
+All three project collaborators have expressed the wish to continue working on the theorem prover. First follow--up effort will be directed at addressing the outstanding issues. After that, we can work towards completing our ``wish list'' from Section~\ref{sec:project}.
+
+There is an additional idea that might be worth exploring. Currently, the term computation algorithm has the precondition that the input is a proof net as verified by step~4. However, with additional safety checks it may be possible to make the algorithm robust against inputs in which this is not the case. Doing so would essentially collapse the proof net verification and term computation into a single algorithm, where a non-proof-net \hs/CompositionGraph/ as input simply yield the empty list as output. The unification-based approach taken by Niels Steenbergen for the proof net verification \cite{niels} may be reusable for this purpose.
+
+
+\begin{thebibliography}{9}
+    \bibitem{m09}
+        Michael Moortgat (2009).
+        \emph{Symmetric Categorial Grammar}.
+        Journal of Philosophical Logic,
+        vol.~38, no.~6, p.~681--710.
+    
+    \bibitem{mm12}
+        Michael Moortgat and Richard Moot (2012).
+        ``Proofs nets and the categorial flow of information''.
+        In: \emph{Logic and Interactive Rationality. Yearbook 2011},
+        p.~270--302.
+    
+    \bibitem{maarten}
+        Maarten Trompper (2015).
+        \emph{Unfolding formulae in proof nets: An implementation in Haskell}.
+        Paper for the Master's course ``Logic and Language'',
+        Utrecht University, 2014--2015.
+    
+    \bibitem{niels}
+        Niels Steenbergen (2015).
+        \emph{Proof net validation for Lambek-Grishin calculus}.
+        Paper for the Master's course ``Logic and Language'',
+        Utrecht University, 2014--2015.
+    
+    \bibitem{qm02}
+        Richard Moot and Quintijn Puite (2002).
+        \emph{Proof Nets for the Multimodal Lambek Calculus}.
+        Studia Logica, vol.~71, p.~415--442.
+\end{thebibliography}
+
+
+\appendix
+
+\section{Source code}\label{code}
+
+\subsection{\texttt{src/LG/Term.hs}}\label{code:term}
+\haskellfile{../src/LG/Term.hs}
+
+\subsection{\texttt{src/LG/Subnet.hs}}\label{code:net}
+\haskellfile{../src/LG/Subnet.hs}
+
+\subsection{\texttt{src/LG/SubnetGraph.hs}}\label{code:netgraph}
+\haskellfile{../src/LG/SubnetGraph.hs}
+
+\subsection{\texttt{src/LG/TestGraph.hs}}\label{code:test}
+\haskellfile{../src/LG/TestGraph.hs}
+
+\end{document}
